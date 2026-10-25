@@ -39,8 +39,8 @@ export default function ActivityHeatmap({
     const el = scrollRef.current;
     if (!el) return undefined;
     const measure = () => {
-      const usable = el.clientWidth - LABEL_W - (heat.columns - 1) * GAP;
-      setCell(Math.max(MIN_CELL, Math.floor((usable / heat.columns) * 100) / 100));
+       const usable = el.clientWidth - LABEL_W - (heat.columns - 1) * GAP - 6;
+      setCell(Math.max(MIN_CELL, Math.floor((usable / heat.columns) * 10) / 10));
     };
     measure();
     const observer = new ResizeObserver(measure);

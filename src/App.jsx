@@ -787,6 +787,11 @@ function AuthenticatedApp({
   const [uploadingSheet, setUploadingSheet] = useState(false);
   const [deletingSheetId, setDeletingSheetId] = useState(null);
   const [sheetError, setSheetError] = useState("");
+  useEffect(() => {
+  if (!sheetError) return undefined;
+  const timer = window.setTimeout(() => setSheetError(""), 3000);
+  return () => window.clearTimeout(timer);
+}, [sheetError]);
   const [todayDateKey, setTodayDateKey] = useState(() =>
     getLocalDateKey(new Date()),
   );

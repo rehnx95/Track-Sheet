@@ -22,7 +22,7 @@
   color: var(--hm-text);
 }
 .hm-title { margin: 0 0 1rem; font-size: 1.05rem; font-weight: 600; }
-.hm-body { display: flex; align-items: flex-start; gap: 1.5rem; }
+.hm-body { display: flex; align-items: flex-start; gap: 1rem; }
 .hm-main { min-width: 0; flex: 1; }
 .hm-scroll { overflow-x: auto; padding-bottom: 0.5rem; }
 .hm-inner { width: max-content; }
@@ -107,4 +107,28 @@
   .hm-body { flex-direction: column; align-items: stretch; }
   .hm-years { order: -1; flex-direction: row; width: 100%; overflow-x: auto; }
   .hm-years button { white-space: nowrap; }
+}
+
+.hm-tip {
+  position: fixed;
+  z-index: 100;
+  transform: translate(-50%, calc(-100% - 8px));
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--hm-accent-bg);
+  color: var(--hm-accent-fg);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.hm-tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--hm-accent-bg);
 }

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildHeatmap, formatTooltipDate } from '../utils/heatmap';
 import './ActivityHeatmap.css';
 
 const WEEKDAYS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+const GAP = 3;
+const LABEL_W = 34;
+const MIN_CELL = 11;
 
 export default function ActivityHeatmap({
   activity,
@@ -13,6 +16,8 @@ export default function ActivityHeatmap({
   loading = false,
 }) {
   const scrollRef = useRef(null);
+  const [cell, setCell] = useState(12);
+  const [tip, setTip] = useState(null);
   const currentYear = Number(todayKey.slice(0, 4));
   const activeYear = selectedYear == null ? currentYear : selectedYear;
 
@@ -29,10 +34,35 @@ export default function ActivityHeatmap({
     return [...set].filter(Number.isFinite).sort((a, b) => b - a);
   }, [activity, years, currentYear]);
 
+  // Size the cells so the grid fills the available width.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const usable = el.clientWidth - LABEL_W - (heat.columns - 1) * GAP;
+      setCell(Math.max(MIN_CELL, Math.floor((usable / heat.columns) * 100) / 100));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [heat.columns]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollLeft = selectedYear == null ? el.scrollWidth : 0;
-  }, [heat.columns, selectedYear]);
+  }, [heat.columns, selectedYear, cell]);
+
+  const showTip = (event) => {
+    const target = event.target;
+    const text = target instanceof HTMLElement ? target.dataset.tip : undefined;
+    if (!text) {
+      setTip(null);
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    setTip({ text, x: rect.left + rect.width / 2, y: rect.top });
+  };
 
   const noun = heat.total === 1 ? 'problem' : 'problems';
   const title = `${heat.total.toLocaleString()} ${noun} solved ${
@@ -44,8 +74,11 @@ export default function ActivityHeatmap({
       <h3 className="hm-title">{title}</h3>
       <div className="hm-body">
         <div className="hm-main">
-          <div className="hm-scroll" ref={scrollRef}>
-            <div className="hm-inner" style={{ '--hm-weeks': heat.columns }}>
+          <div className="hm-scroll" ref={scrollRef} onScroll={() => setTip(null)}>
+            <div
+              className="hm-inner"
+              style={{ '--hm-weeks': heat.columns, '--hm-cell': `${cell}px` }}
+            >
               <div className="hm-months">
                 {heat.labels.map((label, i) => (
                   <span key={i}>{label}</span>
@@ -57,18 +90,20 @@ export default function ActivityHeatmap({
                     <span key={i}>{label}</span>
                   ))}
                 </div>
-                <div className="hm-weeks">
+                <div className="hm-weeks" onMouseOver={showTip} onMouseLeave={() => setTip(null)}>
                   {heat.weeks.map((week, w) => (
                     <div className="hm-week" key={w}>
                       {week.map((day) => {
-                        const tip = `${
-                          day.count === 0 ? 'No problems' : `${day.count} ${day.count === 1 ? 'problem' : 'problems'}`
+                        const tipText = `${
+                          day.count === 0
+                            ? 'No problems'
+                            : `${day.count} ${day.count === 1 ? 'problem' : 'problems'}`
                         } on ${formatTooltipDate(day.date, currentYear)}`;
                         return (
                           <span
                             key={day.key}
-                            title={day.inRange && !day.future ? tip : undefined}
-                            aria-label={day.inRange && !day.future ? tip : undefined}
+                            data-tip={day.inRange ? tipText : undefined}
+                            aria-label={day.inRange ? tipText : undefined}
                             aria-hidden={day.inRange ? undefined : true}
                             className={`hm-day hm-l${day.level}${day.inRange ? '' : ' hm-off'}`}
                           />
@@ -96,7 +131,7 @@ export default function ActivityHeatmap({
             <li key={y}>
               <button
                 type="button"
-                               aria-pressed={y === activeYear}
+                aria-pressed={y === activeYear}
                 onClick={() =>
                   onSelectYear?.(
                     y === currentYear && selectedYear === currentYear ? null : y,
@@ -109,6 +144,11 @@ export default function ActivityHeatmap({
           ))}
         </ul>
       </div>
+      {tip && (
+        <div className="hm-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}>
+          {tip.text}
+        </div>
+      )}
     </section>
   );
 }

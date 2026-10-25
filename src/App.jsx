@@ -26,6 +26,7 @@ import {
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { useProgress } from "./hooks/useProgress";
 import ProfileSettings from "./components/ProfileSettings";
+import ActivityHeatmap from "./components/ActivityHeatmap";
 import TrackSheetBrand from "./components/TrackSheetBrand";
 import Tooltip from "./components/Tooltip";
 import {
@@ -865,6 +866,55 @@ function AuthenticatedApp({
     getPeopleRoute().page === "people" ? "/people" : "/",
   );
   const [copiedProfileLink, setCopiedProfileLink] = useState(false);
+
+  const [ownHeatmapYear, setOwnHeatmapYear] = useState(null);
+  const [publicHeatmapYear, setPublicHeatmapYear] = useState(null);
+  const [publicHeatmap, setPublicHeatmap] = useState({
+    username: "",
+    year: null,
+    activity: {},
+    years: [],
+  });
+
+  useEffect(() => {
+    setPublicHeatmapYear(null);
+  }, [selectedPublicUsername]);
+
+  useEffect(() => {
+    if (!selectedPublicUsername) return undefined;
+    let active = true;
+    const load = async () => {
+      try {
+        const { data, error } = await supabase.rpc("get_public_activity", {
+          requested_username: selectedPublicUsername,
+          requested_today: getLocalDateKey(new Date()),
+          requested_year: publicHeatmapYear,
+        });
+        if (error) throw error;
+        if (!active) return;
+        const row = Array.isArray(data) ? data[0] : data;
+        setPublicHeatmap({
+          username: selectedPublicUsername,
+          year: publicHeatmapYear,
+          activity: row?.activity || {},
+          years: row?.active_years || [],
+        });
+      } catch (error) {
+        console.error("Failed to load public activity:", error);
+      }
+    };
+    load();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 15000);
+    window.addEventListener("focus", load);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", load);
+    };
+  }, [selectedPublicUsername, publicHeatmapYear]);
+
   const [backupAction, setBackupAction] = useState("");
   const importSheetId = useRef(null);
   const importFileInput = useRef(null);
@@ -2207,78 +2257,17 @@ start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
                   </div>
                 </section>
 
-                <section className="surface-card mb-6 rounded-2xl border border-[#262626] bg-[#0A0A0A] p-6">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-lg font-semibold text-[#EDEDED]">
-                      {solvedPastYear.toLocaleString()} problems solved in the past year
-                    </h2>
-                    <div
-                      className="flex items-center gap-2 text-xs text-[#A1A1A1]"
-                      aria-label="Activity scale: less to more"
-                    >
-                      <span>Less</span>
-                      <div className="flex gap-1">
-                        {["var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)"].map(
-                          (color) => (
-                            <span
-                              key={color}
-                              className="h-3 w-3 rounded-sm"
-                              style={{ backgroundColor: color }}
-                            />
-                          ),
-                        )}
-                      </div>
-                      <span>More</span>
-                    </div>
-                  </div>
-                  <div
-                    ref={activityScrollRef}
-                    onScroll={handleActivityScroll}
-                    className="activity-scroll pb-2"
-                  >
-                    <div className="activity-months mb-2 text-[10px] text-[#A1A1A1]">
-                      {heatmapData.monthLabels.map((month, index) => (
-                        <span key={index} className="whitespace-nowrap">
-                          {month}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="activity-heatmap">
-                      <div className="activity-weekday-labels text-[9px] leading-[11px] text-[#A1A1A1]">
-                        {["Mon", "", "Wed", "", "Fri", "", ""].map(
-                          (label, index) => (
-                            <span key={`weekday-${index}`}>{label}</span>
-                          ),
-                        )}
-                      </div>
-                      <div className="activity-weeks">
-                        {heatmapData.weeks.map((week, weekIndex) => (
-                          <div key={weekIndex} className="activity-week">
-                            {week.map((item) => (
-                              <span
-                                key={item.dateKey}
-                                aria-label={`${item.count} problems solved on ${item.date.toLocaleDateString()}${item.dateKey === dateKey ? ", today" : ""}`}
-                                title={`${item.count} ${item.count === 1 ? "problem" : "problems"} solved on ${item.date.toLocaleDateString()}${item.dateKey === dateKey ? "" : ""}`}
-                                className={`activity-day block rounded-[2px] border border-white/[0.04] ${item.dateKey === dateKey ? "is-today" : ""}`}
-                                style={{
-                                  backgroundColor: [
-                                    "var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)",
-                                  ][item.intensity],
-                                  visibility: item.outOfRange
-                                    ? "hidden"
-                                    : "visible",
-                                }}
-                              />
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-[#A1A1A1]">
-                    <span>Total active days: {activeDays}</span>
-                  </div>
-                </section>
+                <ActivityHeatmap
+                  activity={publicHeatmap.username === selectedPublicUsername ? publicHeatmap.activity : {}}
+                  years={publicHeatmap.years}
+                  todayKey={todayDateKey}
+                  selectedYear={publicHeatmapYear}
+                  onSelectYear={setPublicHeatmapYear}
+                  loading={
+                    publicHeatmap.username !== selectedPublicUsername ||
+                    publicHeatmap.year !== publicHeatmapYear
+                  }
+                />
 
                 <section
                   className="recent-ac-card surface-card"
@@ -2641,80 +2630,12 @@ start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
               </section>
 
               {/* Activity Section */}
-              <div className="surface-card bg-[#0A0A0A] rounded-2xl border border-[#262626] p-6 mb-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <h3 className="text-lg font-semibold text-[#EDEDED]">
-                    {yearlyActivityTotal.toLocaleString()} problems solved in
-                    the past year
-                  </h3>
-                  <div
-                    className="flex items-center gap-2 text-xs text-[#A1A1A1]"
-                    aria-label="Activity scale: less to more"
-                  >
-                    <span>Less</span>
-                    <div className="flex gap-1">
-                      {[
-                        "var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)",
-                      ].map((color) => (
-                        <span
-                          key={color}
-                          className="w-3 h-3 rounded-sm border border-white/5"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
-                    <span>More</span>
-                  </div>
-                </div>
-                <div
-                  ref={activityScrollRef}
-                  onScroll={handleActivityScroll}
-                  className="activity-scroll pb-2"
-                >
-                  <div>
-                    <div className="activity-months mb-2 text-[10px] text-[#A1A1A1]">
-                      {heatmapData.monthLabels.map((month, index) => (
-                        <span key={index} className="whitespace-nowrap">
-                          {month}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="activity-heatmap">
-                      <div className="activity-weekday-labels text-[9px] leading-[11px] text-[#A1A1A1]">
-                        {["Mon", "", "Wed", "", "Fri", "", ""].map(
-                          (label, index) => (
-                            <span key={`weekday-${index}`}>{label}</span>
-                          ),
-                        )}
-                      </div>
-                      <div className="activity-weeks">
-                        {heatmapData.weeks.map((week, weekIndex) => (
-                          <div key={weekIndex} className="activity-week">
-                            {week.map((day) => (
-                              <span
-                                key={day.dateKey}
-                                aria-hidden={day.outOfRange || undefined}
-                                aria-label={`${day.count} problems solved on ${day.date.toLocaleDateString()}${day.dateKey === todayDateKey ? ", today" : ""}`}
-                                title={`${day.count} ${day.count === 1 ? "problem" : "problems"} solved on ${day.date.toLocaleDateString()}${day.dateKey === todayDateKey ? "" : ""}`}
-                                className={`activity-day block rounded-[2px] border border-white/[0.04] ${day.dateKey === todayDateKey ? "is-today" : ""}`}
-                                style={{
-                                  backgroundColor: [
-                                    "var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)",
-                                  ][day.intensity],
-                                  visibility: day.outOfRange ? "hidden" : "visible",
-                                }}
-                              />
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-[#A1A1A1]">
-                  <span>Total active days: {yearlyActiveDays}</span>
-                </div>
-              </div>
+              <ActivityHeatmap
+                activity={activityLog}
+                todayKey={todayDateKey}
+                selectedYear={ownHeatmapYear}
+                onSelectYear={setOwnHeatmapYear}
+              />
 
               <section
                 className="recent-ac-card surface-card"

@@ -1460,9 +1460,7 @@ function AuthenticatedApp({
     const today = new Date(year, month - 1, day);
     today.setHours(0, 0, 0, 0);
     const firstDate = new Date(today);
-    firstDate.setDate(
-      firstDate.getDate() - ((firstDate.getDay() + 6) % 7) - 52 * 7,
-    );
+    firstDate.setDate(firstDate.getDate() - 364);
     return Object.entries(activityLog).reduce(
       (total, [date, count]) =>
         date >= getLocalDateKey(firstDate) && date <= getLocalDateKey(today)
@@ -1477,9 +1475,7 @@ function AuthenticatedApp({
     const today = new Date(year, month - 1, day);
     today.setHours(0, 0, 0, 0);
     const firstDate = new Date(today);
-    firstDate.setDate(
-      firstDate.getDate() - ((firstDate.getDay() + 6) % 7) - 52 * 7,
-    );
+    firstDate.setDate(firstDate.getDate() - 364);
     return Object.entries(activityLog).filter(
       ([date, count]) =>
         count > 0 &&
@@ -1493,11 +1489,10 @@ function AuthenticatedApp({
     const [year, month, day] = todayDateKey.split("-").map(Number);
     const today = new Date(year, month - 1, day);
     today.setHours(0, 0, 0, 0);
-    const gridStart = new Date(today);
-    gridStart.setDate(
-      gridStart.getDate() - ((gridStart.getDay() + 6) % 7) - 52 * 7,
-    );
-    const firstDate = new Date(gridStart);
+   const firstDate = new Date(today);
+firstDate.setDate(firstDate.getDate() - 364);
+const gridStart = new Date(firstDate);
+gridStart.setDate(gridStart.getDate() - ((gridStart.getDay() + 6) % 7));
 
     for (let weekIndex = 0; weekIndex < 53; weekIndex++) {
       const week = [];
@@ -1936,9 +1931,10 @@ function AuthenticatedApp({
     const heatmapData = useMemo(() => {
       const [year, month, day] = dateKey.split("-").map(Number);
       const today = new Date(year, month - 1, day);
-      today.setHours(0, 0, 0, 0);
-      const start = new Date(today);
-      start.setDate(start.getDate() - ((start.getDay() + 6) % 7) - 52 * 7);
+   const rangeStart = new Date(today);
+rangeStart.setDate(rangeStart.getDate() - 364);
+const start = new Date(rangeStart);
+start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
       const weeks = [];
       for (let weekIndex = 0; weekIndex < 53; weekIndex++) {
         const week = [];
@@ -1946,7 +1942,7 @@ function AuthenticatedApp({
           const date = new Date(start);
           date.setDate(start.getDate() + weekIndex * 7 + dayIndex);
           const dateKey = getLocalDateKey(date);
-          const outOfRange = date > today;
+         const outOfRange = date < rangeStart || date > today;
           const count = outOfRange ? 0 : Number(activity[dateKey] || 0);
           week.push({
             date,

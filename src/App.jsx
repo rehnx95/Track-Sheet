@@ -2217,7 +2217,7 @@ function AuthenticatedApp({
                     >
                       <span>Less</span>
                       <div className="flex gap-1">
-                        {["#171717", "#0e4429", "#006d32", "#26a641", "#39d353"].map(
+                        {["var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)"].map(
                           (color) => (
                             <span
                               key={color}
@@ -2261,11 +2261,7 @@ function AuthenticatedApp({
                                 className={`activity-day block rounded-[2px] border border-white/[0.04] ${item.dateKey === dateKey ? "is-today" : ""}`}
                                 style={{
                                   backgroundColor: [
-                                    "#171717",
-                                    "#0e4429",
-                                    "#006d32",
-                                    "#26a641",
-                                    "#39d353",
+                                    "var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)",
                                   ][item.intensity],
                                   visibility: item.outOfRange
                                     ? "hidden"
@@ -2657,11 +2653,7 @@ function AuthenticatedApp({
                     <span>Less</span>
                     <div className="flex gap-1">
                       {[
-                        "#171717",
-                        "#0e4429",
-                        "#006d32",
-                        "#26a641",
-                        "#39d353",
+                        "var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)",
                       ].map((color) => (
                         <span
                           key={color}
@@ -2706,11 +2698,7 @@ function AuthenticatedApp({
                                 className={`activity-day block rounded-[2px] border border-white/[0.04] ${day.dateKey === todayDateKey ? "is-today" : ""}`}
                                 style={{
                                   backgroundColor: [
-                                    "#171717",
-                                    "#0e4429",
-                                    "#006d32",
-                                    "#26a641",
-                                    "#39d353",
+                                    "var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)",
                                   ][day.intensity],
                                   visibility: day.outOfRange ? "hidden" : "visible",
                                 }}

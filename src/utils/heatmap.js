@@ -40,8 +40,6 @@ export function buildHeatmap({ activity = {}, todayKey, year = null }) {
   } else {
     start = new Date(year, 0, 1);
     end = new Date(year, 11, 31);
-    if (end > today) end = today;
-    if (start > end) start = end;
   }
 
   const gridStart = addDays(start, -start.getDay());
@@ -62,7 +60,7 @@ export function buildHeatmap({ activity = {}, todayKey, year = null }) {
         total += count;
         activeDays += 1;
       }
-      week.push({ date, key, count, inRange, level: getLevel(count) });
+           week.push({ date, key, count, inRange, future: date > today, level: getLevel(count) });
     }
     weeks.push(week);
   }

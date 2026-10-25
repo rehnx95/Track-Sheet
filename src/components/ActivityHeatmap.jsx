@@ -67,8 +67,8 @@ export default function ActivityHeatmap({
                         return (
                           <span
                             key={day.key}
-                            title={day.inRange ? tip : undefined}
-                            aria-label={day.inRange ? tip : undefined}
+                            title={day.inRange && !day.future ? tip : undefined}
+                            aria-label={day.inRange && !day.future ? tip : undefined}
                             aria-hidden={day.inRange ? undefined : true}
                             className={`hm-day hm-l${day.level}${day.inRange ? '' : ' hm-off'}`}
                           />
@@ -96,8 +96,12 @@ export default function ActivityHeatmap({
             <li key={y}>
               <button
                 type="button"
-                aria-pressed={y === activeYear}
-                onClick={() => onSelectYear?.(y === currentYear ? null : y)}
+                               aria-pressed={y === activeYear}
+                onClick={() =>
+                  onSelectYear?.(
+                    y === currentYear && selectedYear === currentYear ? null : y,
+                  )
+                }
               >
                 {y}
               </button>

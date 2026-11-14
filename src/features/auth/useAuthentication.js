@@ -135,6 +135,8 @@ export default function useAuthentication() {
     return () => {
       active = false;
     };
+    // Avoid refetching when the profile fetched below updates the cached profile ID.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {

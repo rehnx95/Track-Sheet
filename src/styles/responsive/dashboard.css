@@ -38,16 +38,13 @@
   .dashboard-main {
     gap: 0.8rem;
     padding-top: 0.75rem;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
   .dashboard-content {
     max-height: none !important;
     overflow: visible !important;
     padding-right: 0;
-  }
-
-  .dashboard-main {
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
   .mobile-progress-summary {

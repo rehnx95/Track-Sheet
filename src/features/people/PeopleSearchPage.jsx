@@ -8,7 +8,6 @@ export default function PeopleSearchPage({
   loading,
   error,
   onSelectProfile,
-  onBack,
   context,
 }) {
   const { headerProps } = context;

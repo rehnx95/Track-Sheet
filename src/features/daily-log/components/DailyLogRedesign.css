@@ -1,0 +1,66 @@
+/* Daily Log redesign. Added by scripts/patch-redesign.cjs.
+   Scoped to .daily-tracker so it overrides DailyTracker.css without !important. */
+
+/* Heading: name, meta, then the action buttons grouped at the right. */
+.daily-tracker .activity-card-identity {
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.daily-tracker .activity-card-inline-controls {
+  order: 99;
+  margin-left: auto;
+  gap: 0.2rem;
+}
+
+.daily-tracker .activity-card-inline-controls .activity-add-slot,
+.daily-tracker .activity-card-inline-controls .activity-delete {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.5rem;
+  opacity: 1;
+}
+
+/* "From sheet" and "N slots": plain muted text instead of pills. */
+.daily-tracker .activity-from-sheet,
+.daily-tracker .activity-slot-count {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.daily-tracker .activity-from-sheet::before,
+.daily-tracker .activity-slot-count::before {
+  content: "\00b7";
+  margin-right: 0.5rem;
+}
+
+/* Slot rows. */
+.daily-tracker .daily-slot-row {
+  border-radius: 0.5rem;
+  transition: background-color 120ms ease;
+}
+
+.daily-tracker .daily-slot-row:hover,
+.daily-tracker .daily-slot-row:focus-within {
+  background: var(--surface-hover);
+}
+
+.daily-tracker .daily-slot-row .slot-remove {
+  opacity: 1;
+}
+
+.daily-tracker .slot-remove:hover,
+.daily-tracker .activity-delete:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+/* Warnings read as warnings. */
+.daily-tracker .daily-warnings {
+  color: var(--warning);
+}

@@ -830,11 +830,6 @@
   gap: 1rem;
 }
 
-.daily-main-column,
-.daily-side-panel {
-  min-width: 0;
-}
-
 .log-summary-card,
 .quick-log-card,
 .mini-stat-card,

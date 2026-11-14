@@ -123,8 +123,10 @@ export default function ActivityCard({
           {activityId.startsWith("sheet:") && (
             <span className="activity-from-sheet">From sheet</span>
           )}
-          {slots.length > 1 && (
-            <span className="activity-slot-count">{slots.length} slots</span>
+          {slots.length > 0 && (
+            <span className="activity-slot-count">
+              {slots.length} {slots.length === 1 ? "slot" : "slots"}
+            </span>
           )}
         </div>
         <span className="activity-total">

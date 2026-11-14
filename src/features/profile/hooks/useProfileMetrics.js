@@ -6,7 +6,6 @@ export default function useProfileMetrics({
   progress,
   completedOn,
   completedAt,
-  activityLog,
   todayDateKey,
 }) {
   const profileSheetStats = useMemo(

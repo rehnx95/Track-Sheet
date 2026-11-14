@@ -112,7 +112,6 @@ export default function AuthenticatedScreens({ context }) {
           loading={peopleSearchLoading}
           error={peopleSearchError}
           onSelectProfile={openPublicProfile}
-          onBack={() => navigateTo("/")}
         />
         {renderDialog()}
       </>

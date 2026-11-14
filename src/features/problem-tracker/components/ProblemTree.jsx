@@ -1,5 +1,4 @@
-import { SkipForward } from "lucide-react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, SkipForward } from "lucide-react";
 
 export function ProgressBar({ done, total }) {
   const pct = total ? Math.round((done / total) * 100) : 0;
@@ -78,7 +77,6 @@ export function ProblemRow({ prob, state, onToggle, onSkip }) {
 
 export function SubSectionRow({
   sub,
-  stepId,
   expanded,
   onToggle,
   progressState,
@@ -191,7 +189,6 @@ export function StepRow({
             <SubSectionRow
               key={sub.id}
               sub={sub}
-              stepId={step.id}
               expanded={expandedSubs.has(sub.id)}
               onToggle={() => onToggleSub(sub.id)}
               progressState={progressState}

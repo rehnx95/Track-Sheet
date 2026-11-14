@@ -247,7 +247,11 @@ export function validateDay(log) {
       errors.push({ code: "invalid-sleep", message: "Sleep and wake times must differ." });
     } else {
       const sleep = { start: log.sleep_time, end: log.wake_time, wrap: true };
-      sleepSlots.push(sleep);
+      // A sleep that wraps past midnight belongs to the previous night; only the
+      // part after midnight (00:00 to wake time) can clash with today's slots.
+      sleepSlots.push(
+        sleepStart < wakeEnd ? sleep : { start: "00:00", end: log.wake_time },
+      );
       totalMinutes += slotMinutes(sleep, { wrap: true });
     }
   } else if (log?.sleep_time || log?.wake_time) {

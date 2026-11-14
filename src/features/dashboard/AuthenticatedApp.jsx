@@ -46,13 +46,11 @@ export default function AuthenticatedApp({
   const {
     availableSheets,
     selectedSheet,
-    selectedSheetId,
     setSelectedSheetId,
     sheetBootstrapComplete,
     uploadingSheet,
     deletingSheetId,
     sheetError,
-    setSheetError,
     uploadSheetInput,
     data,
     handleUploadSheet,
@@ -219,7 +217,6 @@ export default function AuthenticatedApp({
     progress,
     completedOn,
     completedAt,
-    activityLog,
     todayDateKey,
   });
 

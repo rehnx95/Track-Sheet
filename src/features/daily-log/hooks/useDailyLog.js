@@ -199,7 +199,7 @@ export default function useDailyLog(user, activityLog = {}) {
     setStatus("Saved");
     setMessage("All saved Daily Log entries for your account were cleared.");
     return true;
-  }, [clearHistory, setLog, user.id]);
+  }, [autosaveTimer, clearHistory, saveQueueRef, setLog, user.id]);
 
   return {
     date, log, setLog, loading, loadFailed,

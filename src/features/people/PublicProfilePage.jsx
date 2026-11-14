@@ -7,6 +7,10 @@ import StatStrip from "../../shared/components/StatStrip";
 import ActivityHeatmap from "../activity/components/ActivityHeatmap";
 import { getLevel } from "../activity/utils/heatmap";
 
+const EMPTY_ACTIVITY = {};
+const EMPTY_SHEETS = [];
+const EMPTY_RECENT_ACCEPTED = [];
+
 export default function PublicProfilePage({
   profile,
   loading,
@@ -16,154 +20,158 @@ export default function PublicProfilePage({
   onBack,
   context,
 }) {
-    const {
-      headerProps,
-      publicHeatmap,
-      publicHeatmapYear,
-      publicProfileReturnPath,
-      selectedPublicUsername,
-      setPublicHeatmapYear,
-      todayDateKey,
-    } = context;
-    const [dateKey, setDateKey] = useState(() => getLocalDateKey(new Date()));
+  const {
+    headerProps,
+    publicHeatmap,
+    publicHeatmapYear,
+    publicProfileReturnPath,
+    selectedPublicUsername,
+    setPublicHeatmapYear,
+    todayDateKey,
+  } = context;
+  const [dateKey, setDateKey] = useState(() => getLocalDateKey(new Date()));
 
-    useEffect(() => {
-      const refreshDate = () => {
-        setDateKey((current) => {
-          const today = getLocalDateKey(new Date());
-          return current === today ? current : today;
-        });
-      };
-      const timer = window.setInterval(refreshDate, 60_000);
-      window.addEventListener("focus", refreshDate);
-      document.addEventListener("visibilitychange", refreshDate);
-      return () => {
-        window.clearInterval(timer);
-        window.removeEventListener("focus", refreshDate);
-        document.removeEventListener("visibilitychange", refreshDate);
-      };
-    }, []);
-
-    const activity = profile?.activity || {};
-    const heatmapData = useMemo(() => {
-      const [year, month, day] = dateKey.split("-").map(Number);
-      const today = new Date(year, month - 1, day);
-   const rangeStart = new Date(today);
-rangeStart.setDate(rangeStart.getDate() - 364);
-const start = new Date(rangeStart);
-start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-      const weeks = [];
-      for (let weekIndex = 0; weekIndex < 53; weekIndex++) {
-        const week = [];
-        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-          const date = new Date(start);
-          date.setDate(start.getDate() + weekIndex * 7 + dayIndex);
-          const dateKey = getLocalDateKey(date);
-         const outOfRange = date < rangeStart || date > today;
-          const count = outOfRange ? 0 : Number(activity[dateKey] || 0);
-          week.push({
-            date,
-            dateKey,
-            count,
-            outOfRange,
-            intensity: getLevel(count),
-          });
-        }
-        weeks.push(week);
-      }
-      const monthLabels = weeks.map((week) => {
-        const firstOfMonth = week.find(
-          (item) => !item.outOfRange && item.date.getDate() === 1,
-        );
-        return firstOfMonth
-          ? firstOfMonth.date.toLocaleDateString(undefined, { month: "short" })
-          : "";
+  useEffect(() => {
+    const refreshDate = () => {
+      setDateKey((current) => {
+        const today = getLocalDateKey(new Date());
+        return current === today ? current : today;
       });
-      return { weeks, monthLabels };
-    }, [activity, dateKey]);
+    };
+    const timer = window.setInterval(refreshDate, 60_000);
+    window.addEventListener("focus", refreshDate);
+    document.addEventListener("visibilitychange", refreshDate);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshDate);
+      document.removeEventListener("visibilitychange", refreshDate);
+    };
+  }, []);
 
-    const customSheets = profile?.custom_sheets || [];
-    const profileSheetStats = useMemo(() => {
-      return customSheets.map((sheet, index) => ({
-        id: `${sheet.title}-${index}`,
-        title: sheet.title,
-        solved: Number(sheet.solved || 0),
-        skipped: Number(sheet.skipped || 0),
-        total: Number(sheet.total || 0),
-      }));
-    }, [customSheets]);
-    const recentAccepted = useMemo(() => {
-      return (profile?.custom_recent_accepted || []).map(
-        (problem, index) => ({
-          id: `custom-${index}:${problem.sheet_title}:${problem.title}`,
-          title: problem.title,
-          sheetTitle: problem.sheet_title,
-          acceptedOn: problem.accepted_on,
-          completedAt: problem.completed_at,
-        }),
+  const activity = profile?.activity || EMPTY_ACTIVITY;
+  const heatmapData = useMemo(() => {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    const today = new Date(year, month - 1, day);
+    const rangeStart = new Date(today);
+    rangeStart.setDate(rangeStart.getDate() - 364);
+    const start = new Date(rangeStart);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    const weeks = [];
+
+    for (let weekIndex = 0; weekIndex < 53; weekIndex++) {
+      const week = [];
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + weekIndex * 7 + dayIndex);
+        const dayKey = getLocalDateKey(date);
+        const outOfRange = date < rangeStart || date > today;
+        const count = outOfRange ? 0 : Number(activity[dayKey] || 0);
+        week.push({
+          date,
+          dateKey: dayKey,
+          count,
+          outOfRange,
+          intensity: getLevel(count),
+        });
+      }
+      weeks.push(week);
+    }
+
+    const monthLabels = weeks.map((week) => {
+      const firstOfMonth = week.find(
+        (item) => !item.outOfRange && item.date.getDate() === 1,
       );
-    }, [profile?.custom_recent_accepted]);
-    const activeDays = heatmapData.weeks
-      .flat()
-      .filter((item) => !item.outOfRange && item.count > 0).length;
-    const profileProblemsSolved = profileSheetStats.reduce(
-      (total, sheet) => total + sheet.solved,
-      0,
-    );
-    const profileProblemsTotal = profileSheetStats.reduce(
-      (total, sheet) => total + sheet.total,
-      0,
-    );
-    return (
-      <div className="profile-shell min-h-screen bg-[#000000] text-[#EDEDED] font-sans">
-        <AppHeader
-          active={publicProfileReturnPath.current === "/profile" ? "profile" : "people"}
-          {...headerProps}
-        />
+      return firstOfMonth
+        ? firstOfMonth.date.toLocaleDateString(undefined, { month: "short" })
+        : "";
+    });
+    return { weeks, monthLabels };
+  }, [activity, dateKey]);
 
-        <main className="app-page">
-          {error && !loading && !profile ? (
-            <section className="surface-card rounded-2xl border p-8 text-center">
-              <p className="text-sm font-semibold uppercase tracking-wider text-muted">
-                {error === "This profile could not be found."
-                  ? "404"
-                  : "Profile"}
-              </p>
-              <h2 className="mt-2 text-2xl font-bold">
-                {error === "This profile could not be found."
-                  ? "Profile not found"
-                  : "Could not load profile"}
-              </h2>
-              <p className="mx-auto mt-2 max-w-md text-sm text-[#A1A1A1]">
-                {error === "This profile could not be found."
-                  ? "This username doesn’t match a public profile. Check the spelling or search for another user."
-                  : error}
-              </p>
-              <button
-                type="button"
-                onClick={onBack}
-                className="mt-6 rounded-lg bg-[#EDEDED] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-white"
-              >
-                Find people
-              </button>
-            </section>
-          ) : error ? (
-            <div
-              role="alert"
-              className="rounded-lg border border-border-strong bg-rowHover p-4 text-sm text-muted"
+  const customSheets = profile?.custom_sheets || EMPTY_SHEETS;
+  const profileSheetStats = useMemo(
+    () => customSheets.map((sheet, index) => ({
+      id: `${sheet.title}-${index}`,
+      title: sheet.title,
+      solved: Number(sheet.solved || 0),
+      skipped: Number(sheet.skipped || 0),
+      total: Number(sheet.total || 0),
+    })),
+    [customSheets],
+  );
+  const recentAccepted = useMemo(
+    () => (profile?.custom_recent_accepted || EMPTY_RECENT_ACCEPTED).map(
+      (problem, index) => ({
+        id: `custom-${index}:${problem.sheet_title}:${problem.title}`,
+        title: problem.title,
+        sheetTitle: problem.sheet_title,
+        acceptedOn: problem.accepted_on,
+        completedAt: problem.completed_at,
+      }),
+    ),
+    [profile?.custom_recent_accepted],
+  );
+  const activeDays = heatmapData.weeks
+    .flat()
+    .filter((item) => !item.outOfRange && item.count > 0).length;
+  const profileProblemsSolved = profileSheetStats.reduce(
+    (total, sheet) => total + sheet.solved,
+    0,
+  );
+  const profileProblemsTotal = profileSheetStats.reduce(
+    (total, sheet) => total + sheet.total,
+    0,
+  );
+  return (
+    <div className="profile-shell min-h-screen bg-[#000000] text-[#EDEDED] font-sans">
+      <AppHeader
+        active={publicProfileReturnPath.current === "/profile" ? "profile" : "people"}
+        {...headerProps}
+      />
+
+      <main className="app-page">
+        {error && !loading && !profile ? (
+          <section className="surface-card rounded-2xl border p-8 text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-muted">
+              {error === "This profile could not be found."
+                ? "404"
+                : "Profile"}
+            </p>
+            <h2 className="mt-2 text-2xl font-bold">
+              {error === "This profile could not be found."
+                ? "Profile not found"
+                : "Could not load profile"}
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-[#A1A1A1]">
+              {error === "This profile could not be found."
+                ? "This username doesn’t match a public profile. Check the spelling or search for another user."
+                : error}
+            </p>
+            <button
+              type="button"
+              onClick={onBack}
+              className="mt-6 rounded-lg bg-[#EDEDED] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-white"
             >
-              {error}
-            </div>
-          ) : null}
-          {loading ? (
-            <div className="surface-card rounded-2xl border p-6 text-sm text-[#A1A1A1]">
-              Loading profile…
-            </div>
-          ) : (
-            profile && (
-              <div className="profile-layout own-profile-layout public-profile-layout">
-                <div className="profile-left-column">
-                  <aside className="profile-sidebar">
+              Find people
+            </button>
+          </section>
+        ) : error ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-border-strong bg-rowHover p-4 text-sm text-muted"
+          >
+            {error}
+          </div>
+        ) : null}
+        {loading ? (
+          <div className="surface-card rounded-2xl border p-6 text-sm text-[#A1A1A1]">
+            Loading profile…
+          </div>
+        ) : (
+          profile && (
+            <div className="profile-layout own-profile-layout public-profile-layout">
+              <div className="profile-left-column">
+                <aside className="profile-sidebar">
                   <section className="profile-hero">
                     <div className="profile-avatar">
                       {(profile.name || profile.username || "U")
@@ -248,70 +256,70 @@ start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
                       ]}
                     />
                   </section>
-                  </aside>
+                </aside>
 
-                  <section
-                    className="profile-sheet-progress surface-card rounded-2xl border border-[#262626] bg-[#0A0A0A] p-6"
-                    aria-labelledby="public-profile-sheet-progress"
-                  >
-                    <header className="profile-progress-heading">
-                      <h2
-                        id="public-profile-sheet-progress"
-                        className="text-lg font-semibold text-[#EDEDED]"
-                      >
-                        Sheet progress
-                      </h2>
-                    </header>
-                    <div className="profile-sheet-grid">
-                      {profileSheetStats.map((sheet) => {
-                        const percentage = sheet.total
-                          ? Math.round((sheet.solved / sheet.total) * 100)
-                          : 0;
-                        return (
-                          <div className="profile-sheet-tile" key={sheet.id}>
-                            <div className="profile-sheet-tile-heading">
-                              <span className="truncate font-medium text-[#EDEDED]">
-                                {sheet.title}
-                              </span>
-                              <span className="profile-sheet-percent">{percentage}%</span>
-                            </div>
-                            <div
-                              className="profile-sheet-progress-track h-2 overflow-hidden rounded-full bg-[#262626]"
-                              role="progressbar"
-                              aria-label={`${sheet.title} progress`}
-                              aria-valuemin={0}
-                              aria-valuemax={sheet.total}
-                              aria-valuenow={sheet.solved}
-                            >
-                              <div
-                                className="profile-sheet-progress-fill h-full rounded-full bg-[#EDEDED] transition-all"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="profile-sheet-counts">
-                              {sheet.solved} / {sheet.total} solved
-                              <span aria-hidden="true"> · </span>
-                              {sheet.skipped} skipped
+                <section
+                  className="profile-sheet-progress surface-card rounded-2xl border border-[#262626] bg-[#0A0A0A] p-6"
+                  aria-labelledby="public-profile-sheet-progress"
+                >
+                  <header className="profile-progress-heading">
+                    <h2
+                      id="public-profile-sheet-progress"
+                      className="text-lg font-semibold text-[#EDEDED]"
+                    >
+                      Sheet progress
+                    </h2>
+                  </header>
+                  <div className="profile-sheet-grid">
+                    {profileSheetStats.map((sheet) => {
+                      const percentage = sheet.total
+                        ? Math.round((sheet.solved / sheet.total) * 100)
+                        : 0;
+                      return (
+                        <div className="profile-sheet-tile" key={sheet.id}>
+                          <div className="profile-sheet-tile-heading">
+                            <span className="truncate font-medium text-[#EDEDED]">
+                              {sheet.title}
                             </span>
+                            <span className="profile-sheet-percent">{percentage}%</span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                </div>
+                          <div
+                            className="profile-sheet-progress-track h-2 overflow-hidden rounded-full bg-[#262626]"
+                            role="progressbar"
+                            aria-label={`${sheet.title} progress`}
+                            aria-valuemin={0}
+                            aria-valuemax={sheet.total}
+                            aria-valuenow={sheet.solved}
+                          >
+                            <div
+                              className="profile-sheet-progress-fill h-full rounded-full bg-[#EDEDED] transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="profile-sheet-counts">
+                            {sheet.solved} / {sheet.total} solved
+                            <span aria-hidden="true"> · </span>
+                            {sheet.skipped} skipped
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
 
-                <div className="profile-main">
-                  <ActivityHeatmap
-                    activity={publicHeatmap.username === selectedPublicUsername ? publicHeatmap.activity : {}}
-                    years={publicHeatmap.years}
-                    todayKey={todayDateKey}
-                    selectedYear={publicHeatmapYear}
-                    onSelectYear={setPublicHeatmapYear}
-                    loading={
-                      publicHeatmap.username !== selectedPublicUsername ||
-                      publicHeatmap.year !== publicHeatmapYear
-                    }
-                  />
+              <div className="profile-main">
+                <ActivityHeatmap
+                  activity={publicHeatmap.username === selectedPublicUsername ? publicHeatmap.activity : {}}
+                  years={publicHeatmap.years}
+                  todayKey={todayDateKey}
+                  selectedYear={publicHeatmapYear}
+                  onSelectYear={setPublicHeatmapYear}
+                  loading={
+                    publicHeatmap.username !== selectedPublicUsername ||
+                    publicHeatmap.year !== publicHeatmapYear
+                  }
+                />
 
                   <section
                     className="recent-ac-card surface-card"
@@ -374,12 +382,12 @@ start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
                       Accepted problems will show here as they are solved.
                     </p>
                   )}
-                  </section>
-                </div>
+                </section>
               </div>
-            )
-          )}
-        </main>
-      </div>
-    );
-  }
+            </div>
+          )
+        )}
+      </main>
+    </div>
+  );
+}

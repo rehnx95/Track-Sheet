@@ -280,7 +280,7 @@ export default function TrackerDashboard({ context }) {
                     if (confirmed)
                       await reset(sheetProblems.map((problem) => problem.id));
                   }}
-                  className="w-full text-xs py-1.5 bg-[#1F1F1F] hover:bg-[#262626] text-[#A1A1A1] hover:text-[#EDEDED] rounded-md transition-colors flex items-center justify-center gap-1"
+                  className="w-full border border-[#262626] text-xs py-1.5 bg-[#1F1F1F] hover:bg-[#262626] text-[#A1A1A1] hover:text-[#EDEDED] rounded-md transition-colors flex items-center justify-center gap-1"
                 >
                   <RefreshCcw size={12} /> Reset This Sheet
                 </button>

@@ -47,6 +47,7 @@ export function SleepStudyGraph({
   seriesLabels = {},
   activityColor,
   showAllDays = false,
+  chartHeightOverride,
 }) {
   const chartWrapRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
@@ -74,7 +75,9 @@ export function SleepStudyGraph({
     ? days.slice(-MOBILE_DAY_COUNT)
     : days;
   const plotWidth = chartWidth - PLOT.left - PLOT.right;
-  const chartHeight = isMobileChart ? MOBILE_CHART_HEIGHT : CHART_HEIGHT;
+  const chartHeight = isMobileChart
+    ? MOBILE_CHART_HEIGHT
+    : chartHeightOverride ?? CHART_HEIGHT;
   const plotHeight = chartHeight - PLOT.top - PLOT.bottom;
   const maxMinutes = Math.max(
     0,

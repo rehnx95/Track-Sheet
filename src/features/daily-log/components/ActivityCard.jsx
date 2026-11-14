@@ -21,6 +21,8 @@ export default function ActivityCard({
   onRemoveActivity,
   onDiscardEmptySlot,
   activityColor,
+  fromSheet = false,
+  overlapsSleep = false,
   allowAddSlot = true,
   allowRemoveActivity = true,
   allowRemoveSlot = true,
@@ -83,56 +85,26 @@ export default function ActivityCard({
       ref={cardRef}
       style={{ "--activity-color": activityColor }}
     >
-      <header className="activity-card-heading">
-        <div className="activity-card-identity">
+      <div className="activity-card-identity">
+        <div className="activity-card-title-row">
           <span className="activity-row-dot" aria-hidden="true" />
           <strong className="activity-card-name">{activityName}</strong>
-          {(allowAddSlot || allowRemoveActivity) && (
-            <div className="activity-card-inline-controls">
-              {allowAddSlot && (
-                <Tooltip label="Add slot" className="activity-add-slot-tooltip">
-                  <button
-                    type="button"
-                    className="activity-add-slot"
-                    aria-label={`Add slot to ${activityName}`}
-                    onClick={addSlot}
-                    disabled={disabled || timerRunningHere}
-                  >
-                    <Plus size={14} aria-hidden="true" />
-                  </button>
-                </Tooltip>
-              )}
-              {allowRemoveActivity && (
-                <Tooltip label="Remove activity">
-                  <button
-                    type="button"
-                    className="activity-delete"
-                    aria-label={`Remove ${activityName} activity`}
-                    onClick={() => void onRemoveActivity()}
-                    disabled={disabled || timerRunningHere}
-                  >
-                    <Trash2 size={14} aria-hidden="true" />
-                  </button>
-                </Tooltip>
-              )}
-            </div>
+        </div>
+        <div className="activity-card-meta">
+          <span className="activity-slot-count">
+            {slots.length} {slots.length === 1 ? "slot" : "slots"}
+          </span>
+          {fromSheet && (
+            <span className="activity-from-sheet">From sheet</span>
           )}
           {activityDescription && (
             <span className="activity-card-description">{activityDescription}</span>
           )}
-          {activityId.startsWith("sheet:") && (
-            <span className="activity-from-sheet">From sheet</span>
-          )}
-          {slots.length > 0 && (
-            <span className="activity-slot-count">
-              {slots.length} {slots.length === 1 ? "slot" : "slots"}
-            </span>
+          {overlapsSleep && (
+            <span className="activity-sleep-overlap">Overlaps sleep</span>
           )}
         </div>
-        <span className="activity-total">
-          {activityDurationMinutes > 0 ? formatDuration(activityDurationMinutes) : "—"}
-        </span>
-      </header>
+      </div>
       {visibleSlots.length > 0 && (
         <div className="daily-slot-list">
           {visibleSlots.map(({ slot, index }) => (
@@ -158,8 +130,38 @@ export default function ActivityCard({
           ))}
         </div>
       )}
-      {timerRunningHere && (
+      <span className="activity-total">
+        {activityDurationMinutes > 0 ? formatDuration(activityDurationMinutes) : "—"}
+      </span>
+      {(allowAddSlot || allowRemoveActivity || timerRunningHere) && (
         <div className="activity-card-actions">
+          {allowAddSlot && (
+            <Tooltip label="Add slot" className="activity-add-slot-tooltip">
+              <button
+                type="button"
+                className="activity-add-slot"
+                aria-label={`Add slot to ${activityName}`}
+                onClick={addSlot}
+                disabled={disabled || timerRunningHere}
+              >
+                <Plus size={14} aria-hidden="true" />
+              </button>
+            </Tooltip>
+          )}
+          {allowRemoveActivity && (
+            <Tooltip label="Remove activity">
+              <button
+                type="button"
+                className="activity-delete"
+                aria-label={`Remove ${activityName} activity`}
+                onClick={() => void onRemoveActivity()}
+                disabled={disabled || timerRunningHere}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+              </button>
+            </Tooltip>
+          )}
+          {timerRunningHere && (
           <button
             type="button"
             className="slot-start is-running"
@@ -168,6 +170,7 @@ export default function ActivityCard({
           >
             <Square size={13} aria-hidden="true" /> Stop
           </button>
+          )}
         </div>
       )}
     </section>

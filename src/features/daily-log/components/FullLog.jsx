@@ -9,6 +9,7 @@ import {
 import Tooltip from "../../../shared/components/Tooltip";
 import Dropdown from "../../../shared/components/Dropdown";
 import FullLogTimeline from "./FullLogTimeline";
+import { getActivityColor } from "../lib/activityColor";
 
 const PAGE_SIZE = 10;
 
@@ -38,7 +39,7 @@ function activityBreakdown(row) {
       id: task.id,
       name:
         String(task.name || "Activity").trim().toLowerCase() === "dsa"
-          ? "DSA Sheet"
+          ? "DSA"
           : task.name || "Activity",
       slots: Array.isArray(task.slots) ? task.slots : [],
       minutes: slotTotal(task.slots || []),
@@ -72,13 +73,14 @@ export default function FullLog({ daily, askConfirmation, toolbarContainer }) {
     );
     const filters = ["All"];
     if (entries.some(({ sleep }) => sleep > 0)) filters.push("Sleep");
-    return [
-      ...filters,
-      ...[...names].sort((first, second) =>
-        first.localeCompare(second, undefined, { sensitivity: "base" }),
-      ),
-    ];
+    return [...filters, ...names];
   }, [entries]);
+  const legendItems = activityFilters
+    .filter((filter) => filter !== "All")
+    .map((label) => ({
+      label,
+      color: label === "Sleep" ? null : getActivityColor(label),
+    }));
   const filteredEntries = entries.filter(({ row, activities }) => {
     if (activityFilter === "All") return true;
     if (activityFilter === "Sleep") return Boolean(row.sleep_time || row.wake_time);
@@ -196,6 +198,18 @@ export default function FullLog({ daily, askConfirmation, toolbarContainer }) {
               label: filter === "All" ? "All activities" : filter,
             }))}
           />
+          <div className="full-log-legend" role="group" aria-label="Activity colors">
+            {legendItems.map(({ label, color }) => (
+              <span key={label}>
+                <i
+                  className={label === "Sleep" ? "sleep" : ""}
+                  aria-hidden="true"
+                  style={color ? { "--activity-color": color } : undefined}
+                />
+                {label}
+              </span>
+            ))}
+          </div>
         </header>
 
         <div className="full-log-history-scroll">
@@ -212,13 +226,19 @@ export default function FullLog({ daily, askConfirmation, toolbarContainer }) {
               <ul className="full-log-day-list">
               {visibleEntries.map(({ row, activities, sleep, studied }) => (
                 <li className="full-log-day" key={row.date}>
-                  <strong className="full-log-day-date">
-                    {new Date(`${row.date}T00:00:00`).toLocaleDateString(undefined, {
-                      weekday: "short",
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </strong>
+                  <span className="full-log-day-date">
+                    <span className="full-log-day-weekday">
+                      {new Date(`${row.date}T00:00:00`).toLocaleDateString(undefined, {
+                        weekday: "short",
+                      })}
+                    </span>
+                    <strong>
+                      {new Date(`${row.date}T00:00:00`).toLocaleDateString(undefined, {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </strong>
+                  </span>
                   <FullLogTimeline
                     row={row}
                     activities={activities}
@@ -241,7 +261,7 @@ export default function FullLog({ daily, askConfirmation, toolbarContainer }) {
             <p className="daily-full-empty">No saved daily logs yet.</p>
           )}
           {visibleEntries.length > 0 && !daily.allLogsLoading && (
-            <p className="full-log-footer">
+            <p className="full-log-footer sr-only">
               {isShowingAll
                 ? `Showing all ${filteredEntries.length} ${filteredEntries.length === 1 ? "day" : "days"}`
                 : hasCachedOlderDays

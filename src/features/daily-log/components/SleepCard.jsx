@@ -26,7 +26,7 @@ export default function SleepCard({
           showPlaceholder
           onSaveNow={onSaveNow}
         />
-        <span className="slot-time-separator" aria-hidden="true">–</span>
+        <span className="daily-sleep-time-separator" aria-hidden="true">to</span>
         <TimeInput
           value={wakeTime}
           disabled={disabled}
@@ -36,6 +36,9 @@ export default function SleepCard({
           onSaveNow={onSaveNow}
         />
       </div>
+      <p className="daily-sleep-note">
+        Counted toward the night you wake up, so late-evening slots no longer collide.
+      </p>
     </section>
   );
 }

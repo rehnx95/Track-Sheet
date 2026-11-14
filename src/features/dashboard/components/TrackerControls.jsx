@@ -19,22 +19,24 @@ export default function TrackerControls({
 }) {
   return (
     <div className="tracker-controls">
-      <div
-        className="tracker-filter-group"
-        role="group"
-        aria-label="Filter problems"
-      >
-        {FILTER_OPTIONS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setActiveFilter(value)}
-            aria-pressed={activeFilter === value}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chipActive(value)}`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="tracker-filter-set">
+        <div
+          className="tracker-filter-group"
+          role="group"
+          aria-label="Filter problems"
+        >
+          {FILTER_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setActiveFilter(value)}
+              aria-pressed={activeFilter === value}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${chipActive(value)}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={() => setHideSkipped((hidden) => !hidden)}

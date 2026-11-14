@@ -23,6 +23,7 @@ const ActivityHeatmap = memo(function ActivityHeatmap({
   onSelectYear,
   loading = false,
   mode = 'problems',
+  fillWidth = false,
 }) {
   const scrollRef = useRef(null);
   const yearMenuRef = useRef(null);
@@ -149,7 +150,10 @@ const ActivityHeatmap = memo(function ActivityHeatmap({
           <div className="hm-scroll" ref={scrollRef} onScroll={() => setTip(null)}>
             <div
               className="hm-inner"
-              style={{ '--hm-weeks': heat.columns, '--hm-cell': `${CELL}px` }}
+              style={{
+                '--hm-weeks': heat.columns,
+                ...(!fillWidth && { '--hm-cell': `${CELL}px` }),
+              }}
             >
               <div className="hm-months">
                 {heat.labels.map((label, i) => (

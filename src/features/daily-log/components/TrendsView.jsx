@@ -223,7 +223,7 @@ export default function TrendsView({ daily }) {
     };
   }, [allLogs, chartMode, chartOffset, todayKey]);
 
-  const { weekRangeLabel, timeWent, weekStartKey } = useMemo(() => {
+  const { weekRangeLabel, timeWent, totalTimeWent, weekStartKey } = useMemo(() => {
     const logsByDate = new Map(allLogs.map((log) => [log.date, log]));
     const weekEnd = new Date(`${todayKey}T00:00:00`);
     weekEnd.setDate(weekEnd.getDate() + weekOffset * 7);
@@ -246,21 +246,29 @@ export default function TrendsView({ daily }) {
       });
     });
 
+    const totalMinutes = [...totals.values()].reduce(
+      (total, activity) => total + activity.minutes,
+      0,
+    );
+
     return {
       weekStartKey: dateKey(weekStart),
       weekRangeLabel: formatRangeLabel(weekStart, weekEnd),
+      totalTimeWent: formatDuration(totalMinutes),
       timeWent: [...totals.values()]
         .sort((first, second) => second.minutes - first.minutes)
         .map(({ name, minutes }) => ({
           label: name,
           value: formatDuration(minutes),
           minutes,
+          percentage: totalMinutes
+            ? Math.round((minutes / totalMinutes) * 100)
+            : 0,
           color: getActivityColor(name),
         })),
     };
   }, [allLogs, todayKey, weekOffset]);
 
-  const maxActivityMinutes = Math.max(1, ...timeWent.map((item) => item.minutes));
   const requiredStartKey = [chartStartKey, weekStartKey].sort()[0];
   const oldestLoadedDate = allLogs[allLogs.length - 1]?.date;
   const legendItems = chartMode.series.map((key) => ({
@@ -335,20 +343,22 @@ export default function TrendsView({ daily }) {
           </div>
         </div>
         <div className="sleep-study-tabpanel trends-chart-panel">
-          <div className="sleep-study-legend" aria-label="Chart legend">
-            {legendItems.map(({ key, label }) => (
-              <span key={key}>
-                <i
-                  className={`sleep-study-legend-swatch ${key}`}
-                  aria-hidden="true"
-                  style={key === "study" && activityColor
-                    ? { "--study-chart-color": activityColor }
-                    : undefined}
-                />
-                {label}
-              </span>
-            ))}
-          </div>
+          {legendItems.length > 1 && (
+            <div className="sleep-study-legend" aria-label="Chart legend">
+              {legendItems.map(({ key, label }) => (
+                <span key={key}>
+                  <i
+                    className={`sleep-study-legend-swatch ${key}`}
+                    aria-hidden="true"
+                    style={key === "study" && activityColor
+                      ? { "--study-chart-color": activityColor }
+                      : undefined}
+                  />
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
           <SleepStudyGraph
             days={chartDays}
             title={chartMode.title}
@@ -356,13 +366,17 @@ export default function TrendsView({ daily }) {
             seriesLabels={seriesLabels}
             activityColor={activityColor}
             showAllDays
+            chartHeightOverride={315}
           />
         </div>
       </article>
 
       <article className="trends-panel trends-time-panel">
         <header className="trends-time-header">
-          <h3>Where your time went</h3>
+          <div className="trends-time-heading">
+            <h3>Where your time went</h3>
+            <span className="trends-time-total">{totalTimeWent} total</span>
+          </div>
           <RangeNavigation
             className="trends-week-navigation"
             label="Select totals week"
@@ -386,11 +400,12 @@ export default function TrendsView({ daily }) {
                 />
                 <span>{item.label}</span>
               </div>
+              <span className="trends-time-percentage">{item.percentage}%</span>
               <strong>{item.value}</strong>
               <div className="trends-track" aria-hidden="true">
                 <span
                   style={{
-                    width: `${(item.minutes / maxActivityMinutes) * 100}%`,
+                    width: `${item.percentage}%`,
                     "--activity-color": item.color,
                   }}
                 />

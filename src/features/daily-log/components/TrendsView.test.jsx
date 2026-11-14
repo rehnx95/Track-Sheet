@@ -77,6 +77,9 @@ describe("TrendsView", () => {
     expect(container.querySelector(".trends-chart-summary").textContent).toContain("days logged");
     expect(container.querySelector(".trends-chart-summary").textContent).toContain("avg sleep");
     expect(container.querySelector(".trends-chart-summary").textContent).toContain("avg active");
+    expect(container.querySelector(".trends-time-total").textContent).toMatch(/total$/);
+    expect(container.querySelector(".trends-time-percentage").textContent).toMatch(/%$/);
+    expect(container.querySelector(".sleep-study-legend")).toBeNull();
     expect(container.textContent).not.toContain("Current streak");
     expect(container.textContent).not.toContain("Daily totals");
 

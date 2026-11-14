@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  formatDuration,
   getSlotDurationMinutes,
 } from "../../../shared/utils/time";
 import { getLocalDateKey } from "../../../shared/utils/date";
@@ -13,6 +14,19 @@ function activityTotal(slots) {
   return slots.reduce((total, slot) => {
     return total + (getSlotDurationMinutes(slot) || 0);
   }, 0);
+}
+
+function overlapsSleep(warnings, activityName) {
+  const name = activityName.trim().toLocaleLowerCase();
+  return warnings.some((warning) =>
+    warning.code === "overlap" &&
+    [warning.activityA, warning.activityB].some(
+      (activity) => String(activity || "").trim().toLocaleLowerCase() === name,
+    ) &&
+    [warning.activityA, warning.activityB].some(
+      (activity) => String(activity || "").trim().toLocaleLowerCase() === "sleep",
+    ),
+  );
 }
 
 export default function DayView({ daily, sheets = [], askConfirmation }) {
@@ -30,6 +44,28 @@ export default function DayView({ daily, sheets = [], askConfirmation }) {
   const entryDisabled =
     daily.loading ||
     daily.loadFailed;
+  const totalLoggedMinutes = activities.reduce(
+    (total, activity) => total + activityTotal(activity.slots),
+    0,
+  );
+  const runningTimerStart = daily.runningTimer
+    ? Date.parse(daily.runningTimer.startedAt)
+    : NaN;
+  const runningTimerMinutes =
+    Number.isFinite(runningTimerStart) && Number.isFinite(daily.timerNow)
+      ? Math.max(0, Math.floor((daily.timerNow - runningTimerStart) / 60_000))
+      : 0;
+  const summaryWarnings = daily.validation.warnings.filter((warning) =>
+    !(
+      warning.code === "overlap" &&
+      [warning.activityA, warning.activityB].some(
+        (activity) => String(activity || "").trim().toLocaleLowerCase() === "sleep",
+      ) &&
+      activities.some((activity) =>
+        overlapsSleep([warning], activity.name),
+      )
+    ),
+  );
 
   const addQuickActivity = async (event) => {
     event.preventDefault();
@@ -96,9 +132,14 @@ export default function DayView({ daily, sheets = [], askConfirmation }) {
 
       <div className="daily-shell-layout">
         <div className="daily-main-column">
-          <section className="daily-activities-card" aria-label="Today's activities">
+          <section className="daily-activities-card" aria-label="Activities">
             <div className="daily-entry-heading">
-              <h3>Today's activities</h3>
+              <h3>Activities</h3>
+              <span>
+                {activities.length} {activities.length === 1 ? "category" : "categories"}
+                {" · "}
+                {formatDuration(totalLoggedMinutes + runningTimerMinutes)}
+              </span>
             </div>
 
             {activities.length === 0 && (
@@ -119,6 +160,15 @@ export default function DayView({ daily, sheets = [], askConfirmation }) {
                   slots={activity.slots}
                   totalMinutes={activityTotal(activity.slots)}
                   activityColor={getActivityColor(activity.name)}
+                  fromSheet={Boolean(
+                    activity.sheetId ||
+                    activity.sheet_id ||
+                    String(activity.id || "").startsWith("sheet:"),
+                  )}
+                  overlapsSleep={overlapsSleep(
+                    daily.validation.warnings,
+                    activity.name,
+                  )}
                   disabled={entryDisabled}
                   runningTimer={daily.runningTimer}
                   timerNow={daily.timerNow}
@@ -137,9 +187,9 @@ export default function DayView({ daily, sheets = [], askConfirmation }) {
               ))}
             </div>
 
-            {daily.validation.warnings.length > 0 && (
+            {summaryWarnings.length > 0 && (
               <ul className="daily-warnings" aria-label="Daily log warnings">
-                {daily.validation.warnings.map((warning, index) => (
+                {summaryWarnings.map((warning, index) => (
                   <li key={`${warning.code}-${index}`}>{warning.message}</li>
                 ))}
               </ul>

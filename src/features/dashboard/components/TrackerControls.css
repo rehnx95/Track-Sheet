@@ -13,21 +13,44 @@
   backdrop-filter: blur(12px);
 }
 
-.tracker-filter-group {
+.tracker-filter-set {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
 }
 
+.tracker-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+}
+
+.tracker-dashboard-shell:not([data-theme="light"]) .tracker-filter-group {
+  background-color: #000000 !important;
+}
+
+.tracker-dashboard-shell:not([data-theme="light"]) .tracker-skip-toggle[aria-pressed="false"] {
+  background-color: #000000 !important;
+}
+
+.tracker-dashboard-shell:not([data-theme="light"]) .tracker-skip-toggle[aria-pressed="false"]:hover {
+  background-color: #1f1f1f !important;
+}
+
 .tracker-filter-group > button {
   display: flex;
   width: 4.25rem;
-  height: 2.25rem;
+  height: 2rem;
   align-items: center;
   justify-content: center;
   padding: 0 0.4rem;
-  border-radius: 0.5rem;
+  border-radius: 0.45rem;
   white-space: nowrap;
 }
 
@@ -36,7 +59,11 @@
 }
 
 .tracker-skip-toggle {
-  gap: 0.25rem;
+  min-height: 2.5rem;
+  gap: 0.45rem;
+  padding-inline: 0.8rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 
 @media (max-width: 767px) {
@@ -49,20 +76,32 @@
     gap: 0.5rem;
   }
 
-  .tracker-filter-group {
+  .tracker-filter-set {
     display: grid;
     grid-area: filters;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.35rem;
     width: 100%;
+  }
+
+  .tracker-filter-group {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.15rem;
+    min-width: 0;
   }
 
   .tracker-filter-group > button {
     width: 100%;
     min-width: 0;
-    height: 2.25rem;
-    padding-inline: 0.45rem;
+    height: 2rem;
+    padding-inline: 0.25rem;
     font-size: 0.72rem;
+  }
+
+  .tracker-skip-toggle {
+    min-height: 2.5rem;
+    padding-inline: 0.6rem;
   }
 
   .tracker-skip-toggle svg {
@@ -95,7 +134,7 @@
 
 @media (max-width: 360px) {
   .tracker-filter-group > button {
-    padding-inline: 0.3rem;
+    padding-inline: 0.15rem;
     font-size: 0.66rem;
   }
 }

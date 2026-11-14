@@ -47,7 +47,9 @@ export default function ProfileSheetProgress({
                 <span className="truncate font-medium text-[#EDEDED]">
                   {sheet.title}
                 </span>
-                <span className="profile-sheet-percent">{percentage}%</span>
+                <span className="profile-sheet-counts">
+                  {sheet.solved} / {sheet.total} · {percentage}%
+                </span>
               </div>
               <div
                 className="profile-sheet-progress-track"
@@ -62,11 +64,6 @@ export default function ProfileSheetProgress({
                   style={{ width: `${percentage}%` }}
                 />
               </div>
-              <span className="profile-sheet-counts">
-                {sheet.solved} / {sheet.total} solved
-                <span aria-hidden="true"> · </span>
-                {sheet.skipped} skipped
-              </span>
             </div>
           );
         })}

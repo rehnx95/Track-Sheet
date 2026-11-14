@@ -53,7 +53,7 @@ describe("FullLog", () => {
       olderLogsLoading: false,
       loading: false,
     };
-    render(<FullLog daily={daily} askConfirmation={vi.fn()} />);
+    const { container } = render(<FullLog daily={daily} askConfirmation={vi.fn()} />);
 
     const activityFilter = screen.getByRole("combobox", { name: "Filter full log" });
     fireEvent.click(activityFilter);
@@ -62,6 +62,12 @@ describe("FullLog", () => {
     expect(filterOptions.getByRole("option", { name: "Sleep" })).toBeTruthy();
     fireEvent.click(filterOptions.getByRole("option", { name: "Reading" }));
     expect(activityFilter.textContent).toContain("Reading");
+    expect(screen.getByRole("group", { name: "Activity colors" })).toBeTruthy();
+    expect(within(screen.getByRole("group", { name: "Activity colors" }))
+      .getByText("Sleep")).toBeTruthy();
+    expect(within(screen.getByRole("group", { name: "Activity colors" }))
+      .getByText("Reading")).toBeTruthy();
+    expect(container.querySelector(".full-log-day-weekday")).toBeTruthy();
   });
 
   it("renders icon-only history actions in the supplied toolbar target", () => {

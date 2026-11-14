@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { X } from "lucide-react";
 import { formatDuration, getSlotDurationMinutes } from "../../../shared/utils/time";
 import Tooltip from "../../../shared/components/Tooltip";
 import TimeInput from "./TimeInput";
@@ -49,7 +49,7 @@ export default function SlotRow({
               onClick={() => onRemove(index)}
               disabled={disabled}
             >
-              <Trash2 size={14} aria-hidden="true" />
+              <X size={14} aria-hidden="true" />
             </button>
           </Tooltip>
         )}

@@ -186,6 +186,7 @@ export default function ProfilePage({ context }) {
                 todayKey={todayDateKey}
                 selectedYear={ownHeatmapYear}
                 onSelectYear={setOwnHeatmapYear}
+                fillWidth
               />
 
               <RecentAcceptedProblems problems={recentAccepted} />

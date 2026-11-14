@@ -1,11 +1,13 @@
+import { createPortal } from "react-dom";
 import { useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, List, Trash2 } from "lucide-react";
 import {
   formatDuration,
   getSlotDurationMinutes,
   slotMinutes,
 } from "../../../shared/utils/time";
 import Tooltip from "../../../shared/components/Tooltip";
+import Dropdown from "../../../shared/components/Dropdown";
 import FullLogTimeline from "./FullLogTimeline";
 
 const PAGE_SIZE = 10;
@@ -15,20 +17,6 @@ function slotTotal(slots = []) {
     (total, slot) => total + (getSlotDurationMinutes(slot) || 0),
     0,
   );
-}
-
-function formatTime(value) {
-  if (!value) return "--:--";
-  const [hours, minutes] = String(value).slice(0, 5).split(":");
-  return `${hours}:${minutes}`;
-}
-
-function dateLabel(value) {
-  const date = new Date(`${value}T00:00:00`);
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function sleepTotal(row) {
@@ -47,9 +35,10 @@ function sleepTotal(row) {
 function activityBreakdown(row) {
   return (Array.isArray(row.custom_tasks) ? row.custom_tasks : [])
     .map((task) => ({
+      id: task.id,
       name:
         String(task.name || "Activity").trim().toLowerCase() === "dsa"
-          ? "DSA"
+          ? "DSA Sheet"
           : task.name || "Activity",
       slots: Array.isArray(task.slots) ? task.slots : [],
       minutes: slotTotal(task.slots || []),
@@ -57,8 +46,9 @@ function activityBreakdown(row) {
     .filter((activity) => activity.minutes > 0);
 }
 
-export default function FullLog({ daily, askConfirmation }) {
+export default function FullLog({ daily, askConfirmation, toolbarContainer }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [activityFilter, setActivityFilter] = useState("All");
   const entries = useMemo(
     () =>
       daily.allLogs.map((row) => {
@@ -76,15 +66,33 @@ export default function FullLog({ daily, askConfirmation }) {
       }),
     [daily.allLogs, daily.problemCounts],
   );
-  const visibleEntries = entries.slice(0, visibleCount);
-  const hasCachedOlderDays = visibleCount < entries.length;
+  const activityFilters = useMemo(() => {
+    const names = new Set(
+      entries.flatMap(({ activities }) => activities.map((activity) => activity.name)),
+    );
+    const filters = ["All"];
+    if (entries.some(({ sleep }) => sleep > 0)) filters.push("Sleep");
+    return [
+      ...filters,
+      ...[...names].sort((first, second) =>
+        first.localeCompare(second, undefined, { sensitivity: "base" }),
+      ),
+    ];
+  }, [entries]);
+  const filteredEntries = entries.filter(({ row, activities }) => {
+    if (activityFilter === "All") return true;
+    if (activityFilter === "Sleep") return Boolean(row.sleep_time || row.wake_time);
+    return activities.some((activity) => activity.name === activityFilter);
+  });
+  const visibleEntries = filteredEntries.slice(0, visibleCount);
+  const hasCachedOlderDays = visibleCount < filteredEntries.length;
   const hasMoreDays = hasCachedOlderDays || daily.hasOlderLogs;
   const isShowingAll = visibleCount === Infinity;
   const paginationDisabled = daily.allLogsLoading || daily.olderLogsLoading;
 
   const loadMoreDays = async () => {
     if (hasCachedOlderDays) {
-      setVisibleCount(Math.min(visibleCount + PAGE_SIZE, entries.length));
+      setVisibleCount(Math.min(visibleCount + PAGE_SIZE, filteredEntries.length));
       return;
     }
     if (!daily.hasOlderLogs) return;
@@ -98,124 +106,135 @@ export default function FullLog({ daily, askConfirmation }) {
     setVisibleCount(Infinity);
   };
 
-  return (
-    <div className="daily-full-log">
-      <section className="full-log-history" aria-label="Full log history">
-        <header className="full-log-history-toolbar">
-          <div className="full-log-history-toolbar-top">
-            <div className="full-log-legend" aria-label="Timeline legend">
-              <span><i className="sleep" aria-hidden="true" />Sleep</span>
-              <span><i className="study" aria-hidden="true" />Studied</span>
-            </div>
-            <Tooltip label="Clear my saved history">
-              <button
-                type="button"
-                className="full-log-clear-button"
-                disabled={
-                  daily.clearingHistory ||
-                  daily.allLogsLoading ||
-                  daily.olderLogsLoading ||
-                  daily.loading
-                }
-                onClick={async () => {
-                  const confirmed = await askConfirmation(
-                    "This permanently deletes your saved Daily Log entries. This cannot be undone.",
-                    "Clear saved log history?",
-                    { dangerous: true, requireWord: "CLEAR", confirmText: "Clear" },
-                  );
-                  if (confirmed) await daily.clearAllLogs();
-                }}
-              >
-                <Trash2 size={15} aria-hidden="true" />
-                <span>Clear log</span>
-              </button>
-            </Tooltip>
-          </div>
+  const clearHistory = async () => {
+    const confirmed = await askConfirmation(
+      "This permanently deletes your saved Daily Log entries. This cannot be undone.",
+      "Clear saved log history?",
+      { dangerous: true, requireWord: "CLEAR", confirmText: "Clear" },
+    );
+    if (confirmed) await daily.clearAllLogs();
+  };
 
+  const toolbarActions = toolbarContainer
+    ? createPortal(
+        <div className="full-log-toolbar-actions">
+          <Tooltip label="Clear log">
+            <button
+              type="button"
+              className="full-log-icon-button"
+              aria-label="Clear log"
+              disabled={
+                daily.clearingHistory ||
+                daily.allLogsLoading ||
+                daily.olderLogsLoading ||
+                daily.loading
+              }
+              onClick={() => void clearHistory()}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          </Tooltip>
           {hasMoreDays && (
-            <div className="full-log-pagination">
+            <Tooltip label="Load 10 older days">
               <button
                 type="button"
-                className="load-older-button"
+                className="full-log-icon-button"
+                aria-label="Load 10 older days"
                 disabled={paginationDisabled}
                 onClick={() => void loadMoreDays()}
               >
-                Load 10 older days
+                <ArrowDown size={16} aria-hidden="true" />
               </button>
-              {!isShowingAll && (
-                <button
-                  type="button"
-                  className="load-older-button full-log-show-all"
-                  disabled={paginationDisabled}
-                  onClick={() => void showAllDays()}
-                >
-                  Show all days
-                </button>
-              )}
-            </div>
+            </Tooltip>
           )}
-
+          {hasMoreDays && !isShowingAll && (
+            <Tooltip label="Show all days">
+              <button
+                type="button"
+                className="full-log-icon-button"
+                aria-label="Show all days"
+                disabled={paginationDisabled}
+                onClick={() => void showAllDays()}
+              >
+                <List size={16} aria-hidden="true" />
+              </button>
+            </Tooltip>
+          )}
           {visibleCount > PAGE_SIZE && (
-            <button
-              type="button"
-              className="full-log-show-latest"
-              disabled={paginationDisabled}
-              onClick={() => setVisibleCount(PAGE_SIZE)}
-            >
-              Show latest 10 days
-            </button>
+            <Tooltip label="Show latest 10 days">
+              <button
+                type="button"
+                className="full-log-icon-button"
+                aria-label="Show latest 10 days"
+                disabled={paginationDisabled}
+                onClick={() => setVisibleCount(PAGE_SIZE)}
+              >
+                <ArrowUp size={16} aria-hidden="true" />
+              </button>
+            </Tooltip>
           )}
+        </div>,
+        toolbarContainer,
+      )
+    : null;
+
+  return (
+    <div className="daily-full-log">
+      {toolbarActions}
+      <section className="full-log-history" aria-label="Full log history">
+        <header className="full-log-history-toolbar">
+          <Dropdown
+            ariaLabel="Filter full log"
+            className="full-log-filter-dropdown"
+            value={activityFilter}
+            onChange={(filter) => {
+              setActivityFilter(filter);
+              setVisibleCount(PAGE_SIZE);
+            }}
+            options={activityFilters.map((filter) => ({
+              value: filter,
+              label: filter === "All" ? "All activities" : filter,
+            }))}
+          />
         </header>
 
         <div className="full-log-history-scroll">
           {visibleEntries.length ? (
-            <ul className="full-log-day-list">
-              {visibleEntries.map(({ row, activities, sleep, studied, problems }) => (
-                <li key={row.date}>
-                  <article className="full-log-day">
-                    <div className="full-log-day-content">
-                      <header className="full-log-day-heading">
-                        <strong className="full-log-day-date">
-                          {dateLabel(row.date)}
-                        </strong>
-                        <div className="full-log-day-totals">
-                          <strong>{formatDuration(studied)}</strong>
-                          <span>{problems} solved</span>
-                        </div>
-                      </header>
-                      <FullLogTimeline row={row} activities={activities} />
-                      {(row.sleep_time || row.wake_time) && (
-                        <div className="full-log-day-sleep">
-                          <span>Sleep</span>
-                          <strong>
-                            {formatTime(row.sleep_time)} → {formatTime(row.wake_time)}
-                            {" · "}
-                            {sleep ? formatDuration(sleep) : "—"}
-                          </strong>
-                        </div>
-                      )}
-                      {activities.length ? (
-                        <div className="full-log-activity-chips">
-                          {activities.map((activity, index) => (
-                            <span
-                              className="full-log-activity-chip"
-                              key={`${activity.name}-${index}`}
-                            >
-                              <span>{activity.name}</span>
-                              <strong>{formatDuration(activity.minutes)}</strong>
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="full-log-no-activities">
-                          No timed activities
-                        </p>
-                      )}
-                    </div>
-                  </article>
+            <div className="full-log-table">
+              <div className="full-log-table-header" aria-hidden="true">
+                <span>Date</span>
+                <div className="full-log-table-axis">
+                  <span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>12am</span>
+                </div>
+                <span>Sleep</span>
+                <span>Active</span>
+              </div>
+              <ul className="full-log-day-list">
+              {visibleEntries.map(({ row, activities, sleep, studied }) => (
+                <li className="full-log-day" key={row.date}>
+                  <strong className="full-log-day-date">
+                    {new Date(`${row.date}T00:00:00`).toLocaleDateString(undefined, {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </strong>
+                  <FullLogTimeline
+                    row={row}
+                    activities={activities}
+                    showAxis={false}
+                    activityFilter={activityFilter}
+                  />
+                  <span className="full-log-sleep-total">
+                    {row.sleep_time || row.wake_time ? formatDuration(sleep) : "—"}
+                  </span>
+                  <span className="full-log-active-total">
+                    {activityFilter === "Sleep" ? "—" : formatDuration(studied)}
+                  </span>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </div>
           ) : daily.allLogsLoading ? (
             <div className="daily-full-empty" aria-hidden="true" />
           ) : (
@@ -224,9 +243,9 @@ export default function FullLog({ daily, askConfirmation }) {
           {visibleEntries.length > 0 && !daily.allLogsLoading && (
             <p className="full-log-footer">
               {isShowingAll
-                ? `Showing all ${entries.length} ${entries.length === 1 ? "day" : "days"}`
+                ? `Showing all ${filteredEntries.length} ${filteredEntries.length === 1 ? "day" : "days"}`
                 : hasCachedOlderDays
-                  ? `Showing ${visibleEntries.length} of ${entries.length} loaded days`
+                  ? `Showing ${visibleEntries.length} of ${filteredEntries.length} loaded days`
                   : `Showing ${visibleEntries.length} ${visibleEntries.length === 1 ? "day" : "days"}${daily.hasOlderLogs ? " · older days available" : ""}`}
             </p>
           )}

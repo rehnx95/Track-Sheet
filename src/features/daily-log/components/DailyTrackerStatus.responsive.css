@@ -20,13 +20,19 @@
     gap: 0.6rem;
   }
 
+  .daily-toolbar-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .daily-toolbar > .page-title {
     flex: 1 1 8rem;
     font-size: clamp(1.15rem, 6vw, 1.5rem);
   }
 
   .daily-view-switch {
-    flex: none;
+    flex: 1 1 auto;
+    min-width: 0;
     max-width: 100%;
   }
 
@@ -63,18 +69,6 @@
   }
 }
 
-@container daily-tracker (max-width: 1000px) {
-  .daily-activity-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@container daily-tracker (max-width: 790px) {
-  .daily-activity-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @container daily-tracker (max-width: 520px) {
   .daily-activity-list {
     grid-template-columns: minmax(0, 1fr);
@@ -85,7 +79,7 @@
   }
 
   .activity-card {
-    padding: 0.7rem 0.85rem;
+    padding: 0.2rem 0 0.4rem;
   }
 
   .activity-card-identity {
@@ -97,31 +91,20 @@
     font-size: 0.8rem;
   }
 
-  .activity-menu-trigger {
-    width: 2rem;
-    height: 2rem;
-  }
-
-  .activity-card-heading > .activity-total {
-    flex: none;
-    margin-left: auto;
-    padding: 0.15rem 0.55rem;
+  .activity-card-heading .activity-total {
+    padding: 0;
     font-size: 0.78rem;
   }
 
   .daily-slot-row {
-    grid-template-columns: minmax(4rem, 4.7rem) 0.6rem minmax(4rem, 4.7rem) 1.45rem;
-    gap: 0.3rem;
+    grid-template-columns: minmax(9rem, 9.5rem) minmax(0, 1fr) 3.1rem;
+    gap: 0.4rem;
   }
 
   .daily-slot-row .time-input {
-    height: 2.3rem;
-    min-height: 2.3rem;
+    height: 1.55rem;
+    min-height: 1.55rem;
     font-size: 0.8rem;
-  }
-
-  .time-input {
-    width: 100%;
   }
 
   .daily-entry-heading {
@@ -136,13 +119,13 @@
   }
 
   .daily-slot-row {
-    grid-template-columns: 4.15rem 0.85rem 4.15rem 1.45rem;
+    grid-template-columns: minmax(8.5rem, 9rem) minmax(0, 1fr) 2.8rem;
     gap: 0.3rem;
   }
 
   .daily-slot-row .time-input {
-    height: 2.3rem;
-    min-height: 2.3rem;
+    height: 1.55rem;
+    min-height: 1.55rem;
   }
 
   .daily-slot-row .time-input input {

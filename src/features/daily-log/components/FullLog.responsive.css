@@ -100,27 +100,7 @@
 
 }
 
-@media (max-width: 420px) {
-  .full-log-pagination {
-    flex: 1;
-    gap: 0.35rem;
-  }
-
-  .full-log-pagination > button {
-    flex: 1 1 7rem;
-    padding-inline: 0.4rem;
-  }
-}
-
 @container daily-tracker (max-width: 520px) {
-  .full-log-history-toolbar-top {
-    align-items: flex-start;
-  }
-
-  .full-log-pagination {
-    gap: 0.35rem;
-  }
-
   .full-log-day-totals {
     gap: 0.05rem;
     font-size: 0.68rem;
@@ -128,10 +108,5 @@
 
   .full-log-day-totals strong {
     font-size: 0.95rem;
-  }
-
-  .full-log-pagination > button {
-    flex: 1 1 7rem;
-    padding-inline: 0.4rem;
   }
 }

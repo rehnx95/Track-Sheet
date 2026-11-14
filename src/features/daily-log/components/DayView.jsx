@@ -1,18 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-} from "lucide-react";
-import {
-  formatDuration,
-  getSleepMinutes,
   getSlotDurationMinutes,
 } from "../../../shared/utils/time";
 import { getLocalDateKey } from "../../../shared/utils/date";
+import { getActivityColor } from "../lib/activityColor";
 import ActivityCard from "./ActivityCard";
 import CustomDatePicker from "./CustomDatePicker";
-import LogSummary from "./LogSummary";
+import SleepCard from "./SleepCard";
 
 function activityTotal(slots) {
   return slots.reduce((total, slot) => {
@@ -21,49 +16,44 @@ function activityTotal(slots) {
 }
 
 export default function DayView({ daily, sheets = [], askConfirmation }) {
-  const [newActivityOpen, setNewActivityOpen] = useState(false);
-  const [newActivityName, setNewActivityName] = useState("");
-  const [activityMenuOpen, setActivityMenuOpen] = useState(false);
-  const activityMenuRef = useRef(null);
+  const [quickActivityName, setQuickActivityName] = useState("");
   const activities = useMemo(
-    () => daily.activeCustomTasks.map((task) => ({
+    () => daily.activeCustomTasks
+      .map((task) => ({
         ...task,
         slots:
           daily.log.custom_tasks.find((item) => item.id === task.id)?.slots || [],
-      })),
+      }))
+      .filter((task) => task.slots.length > 0),
     [daily.activeCustomTasks, daily.log.custom_tasks],
-  );
-  const availableSheetActivities = sheets.filter(
-    (sheet) =>
-      !daily.activeCustomTasks.some(
-        (task) => task.sheetId === sheet.id || task.id === `sheet:${sheet.id}`,
-      ),
   );
   const entryDisabled =
     daily.loading ||
     daily.loadFailed;
 
-  useEffect(() => {
-    const closeOnOutsideClick = (event) => {
-      if (!activityMenuRef.current?.contains(event.target)) {
-        setActivityMenuOpen(false);
-      }
-    };
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") setActivityMenuOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsideClick);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, []);
+  const addQuickActivity = async (event) => {
+    event.preventDefault();
+    const name = quickActivityName.trim();
+    if (!name) return;
+    const existing = activities.find(
+      (activity) => activity.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+    if (existing) daily.addSlot(existing.id);
+    else if (!(await daily.addCustomTask(name))) return;
+    setQuickActivityName("");
+  };
 
-  const addActivity = async () => {
-    if (!(await daily.addCustomTask(newActivityName))) return;
-    setNewActivityName("");
-    setNewActivityOpen(false);
+  const addQuickSheet = async (sheet) => {
+    const activityId = `sheet:${sheet.id}`;
+    const existing = activities.find((activity) => activity.id === activityId);
+    if (existing) daily.addSlot(existing.id);
+    else await daily.addSheetActivity(sheet);
+  };
+
+  const removeActivity = async (activity) => {
+    const message = `Remove "${activity.name}" and its slots from this day?`;
+    if (!(await askConfirmation(message, "Remove this activity?"))) return;
+    daily.removeCustomTask(activity.id);
   };
 
   const updateActivitySlot = (activityId, index, field, value) =>
@@ -102,160 +92,113 @@ export default function DayView({ daily, sheets = [], askConfirmation }) {
             <ChevronRight size={16} />
           </button>
         </div>
-        <div className="daily-save-status" role="status" aria-live="polite">
-          {daily.saving
-            ? "Saving…"
-            : daily.validation.errors.length
-              ? "Fix errors to save"
-              : daily.status === "Saved"
-                ? "Saved ✓"
-                : daily.status || "Saved"}
-          {daily.message && <span>{daily.message}</span>}
-          {daily.dirty && !daily.saving && daily.validation.errors.length === 0 && (
-            <button type="button" onClick={() => void daily.saveNow()}>
-              Save now
-            </button>
-          )}
-        </div>
       </div>
 
-      <LogSummary
-        className="daily-summary"
-        ariaLabel="Day summary"
-        sleepTime={daily.log.sleep_time}
-        wakeTime={daily.log.wake_time}
-        sleepDuration={
-          daily.log.sleep_time && daily.log.wake_time
-            ? formatDuration(getSleepMinutes(daily.log))
-            : "—"
-        }
-        studied={formatDuration(daily.studiedMinutes)}
-        solved={daily.problemCounts[daily.date] || 0}
-        onSleepTimeChange={(value) => daily.updateField("sleep_time", value)}
-        onWakeTimeChange={(value) => daily.updateField("wake_time", value)}
-        disabled={entryDisabled}
-      />
+      <div className="daily-shell-layout">
+        <div className="daily-main-column">
+          <section className="daily-activities-card" aria-label="Today's activities">
+            <div className="daily-entry-heading">
+              <h3>Today's activities</h3>
+            </div>
 
-      <div className="daily-entry-heading">
-        <h3>Activities</h3>
-        <div className="new-activity-wrap" ref={activityMenuRef}>
-          <button
-            type="button"
-            className="new-activity-trigger"
-            aria-expanded={activityMenuOpen}
-            aria-haspopup="menu"
-            disabled={entryDisabled}
-            onClick={() => setActivityMenuOpen((open) => !open)}
-          >
-            <Plus size={14} /> New activity
-          </button>
-          {activityMenuOpen && (
-            <div className="new-activity-menu" role="menu">
-              <span className="activity-menu-label">From a sheet</span>
-              {availableSheetActivities.map((sheet) => (
+            {activities.length === 0 && (
+              <p className="daily-empty-state">Nothing logged yet. Add an activity to get started.</p>
+            )}
+
+            <div className="daily-activity-list">
+              {activities.map((activity) => (
+                <ActivityCard
+                  key={`${daily.date}-${activity.id}`}
+                  activityId={activity.id}
+                  activityName={activity.name}
+                  activityDescription={
+                    [activity.description, activity.details].find(
+                      (value) => typeof value === "string" && value.trim(),
+                    ) || ""
+                  }
+                  slots={activity.slots}
+                  totalMinutes={activityTotal(activity.slots)}
+                  activityColor={getActivityColor(activity.name)}
+                  disabled={entryDisabled}
+                  runningTimer={daily.runningTimer}
+                  timerNow={daily.timerNow}
+                  onSaveNow={daily.saveNow}
+                  onAddSlot={() => daily.addSlot(activity.id)}
+                  onStopTimer={daily.stopTimer}
+                  onChangeSlot={(index, field, value) =>
+                    updateActivitySlot(activity.id, index, field, value)
+                  }
+                  onRemoveSlot={(index) => daily.removeSlot(activity.id, index)}
+                  onRemoveActivity={() => removeActivity(activity)}
+                  onDiscardEmptySlot={(index) =>
+                    daily.discardEmptySlot(activity.id, index)
+                  }
+                />
+              ))}
+            </div>
+
+            {daily.validation.warnings.length > 0 && (
+              <ul className="daily-warnings" aria-label="Daily log warnings">
+                {daily.validation.warnings.map((warning, index) => (
+                  <li key={`${warning.code}-${index}`}>{warning.message}</li>
+                ))}
+              </ul>
+            )}
+            {daily.validation.errors.length > 0 && (
+              <ul className="daily-errors" aria-label="Daily log errors">
+                {daily.validation.errors.map((error, index) => (
+                  <li key={`${error.code}-${index}`}>{error.message}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <aside className="daily-side-panel">
+          <form className="quick-log-card" onSubmit={(event) => void addQuickActivity(event)}>
+            <h3>Quick log</h3>
+            <label className="sr-only" htmlFor="quick-activity-name">New activity</label>
+            <div className="quick-log-input-row">
+              <input
+                id="quick-activity-name"
+                type="text"
+                placeholder="What did you work on?"
+                value={quickActivityName}
+                onChange={(event) => setQuickActivityName(event.target.value)}
+              />
+              <button
+                type="submit"
+                className="quick-add-primary"
+                disabled={!quickActivityName.trim() || entryDisabled}
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="quick-log-tags">
+              {sheets.map((sheet) => (
                 <button
                   type="button"
-                  role="menuitem"
                   key={sheet.id}
-                  onClick={async () => {
-                    if (await daily.addSheetActivity(sheet)) {
-                      setActivityMenuOpen(false);
-                    }
-                  }}
+                  className="tag-chip"
+                  onClick={() => void addQuickSheet(sheet)}
+                  disabled={entryDisabled}
                 >
                   {sheet.title}
                 </button>
               ))}
-              {availableSheetActivities.length === 0 && (
-                <span className="new-activity-empty">
-                  {sheets.length
-                    ? "All sheets are already added."
-                    : "No sheets available. Add a custom activity instead."}
-                </span>
-              )}
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setActivityMenuOpen(false);
-                  setNewActivityOpen(true);
-                }}
-              >
-                Create a new activity
-              </button>
             </div>
-          )}
-        </div>
-      </div>
-
-      {newActivityOpen && (
-        <form
-          className="daily-new-task-row daily-new-inline"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void addActivity();
-          }}
-        >
-          <label className="sr-only" htmlFor="new-daily-activity">Activity name</label>
-          <input
-            id="new-daily-activity"
-            autoFocus
-            value={newActivityName}
-            onChange={(event) => setNewActivityName(event.target.value)}
-            placeholder="e.g. System Design"
-          />
-          <button type="submit" disabled={!newActivityName.trim()}>Add</button>
-          <button type="button" onClick={() => setNewActivityOpen(false)}>Cancel</button>
-        </form>
-      )}
-
-      {activities.every((activity) => activity.slots.length === 0) &&
-        !daily.log.sleep_time &&
-        !daily.log.wake_time && (
-          <p className="daily-empty-state">Nothing logged yet. Add an activity or record sleep for this day.</p>
-        )}
-
-      <div className="daily-activity-list">
-        {activities.map((activity) => (
-          <ActivityCard
-            key={`${daily.date}-${activity.id}`}
-            activityId={activity.id}
-            activityName={activity.name}
-            slots={activity.slots}
-            totalMinutes={activityTotal(activity.slots)}
+          </form>
+          <SleepCard
+            sleepTime={daily.log.sleep_time || ""}
+            wakeTime={daily.log.wake_time || ""}
+            totalMinutes={daily.sleptMinutes}
             disabled={entryDisabled}
-            runningTimer={daily.runningTimer}
-            timerNow={daily.timerNow}
-            onAddSlot={() => daily.addSlot(activity.id)}
-            onStopTimer={daily.stopTimer}
-            onChangeSlot={(index, field, value) =>
-              updateActivitySlot(activity.id, index, field, value)
-            }
-            onRemoveSlot={(index) => daily.removeSlot(activity.id, index)}
-            onRemoveActivity={async () => {
-              const message = `Remove "${activity.name}" from future days? Past logs keep their data.`;
-              if (!(await askConfirmation(message, "Remove this activity?"))) return;
-              daily.removeCustomTask(activity.id);
-            }}
-            onRename={(name) => daily.renameCustomTask(activity.id, name)}
+            onSaveNow={daily.saveNow}
+            onChange={(field, value) => daily.updateField(field, value)}
           />
-        ))}
+        </aside>
       </div>
-
-      {daily.validation.warnings.length > 0 && (
-        <ul className="daily-warnings" aria-label="Daily log warnings">
-          {daily.validation.warnings.map((warning, index) => (
-            <li key={`${warning.code}-${index}`}>{warning.message}</li>
-          ))}
-        </ul>
-      )}
-      {daily.validation.errors.length > 0 && (
-        <ul className="daily-errors" aria-label="Daily log errors">
-          {daily.validation.errors.map((error, index) => (
-            <li key={`${error.code}-${index}`}>{error.message}</li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

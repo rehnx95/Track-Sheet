@@ -40,7 +40,14 @@ function formatHours(minutes) {
   return `${(minutes / 60).toFixed(1)}h`;
 }
 
-function SleepStudyGraph({ days, title, series }) {
+export function SleepStudyGraph({
+  days,
+  title,
+  series,
+  seriesLabels = {},
+  activityColor,
+  showAllDays = false,
+}) {
   const chartWrapRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
   const [activePoint, setActivePoint] = useState(null);
@@ -56,13 +63,16 @@ function SleepStudyGraph({ days, title, series }) {
     };
 
     measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
 
   const isMobileChart = chartWidth <= 520;
-  const visibleDays = isMobileChart ? days.slice(-MOBILE_DAY_COUNT) : days;
+  const visibleDays = isMobileChart && !showAllDays
+    ? days.slice(-MOBILE_DAY_COUNT)
+    : days;
   const plotWidth = chartWidth - PLOT.left - PLOT.right;
   const chartHeight = isMobileChart ? MOBILE_CHART_HEIGHT : CHART_HEIGHT;
   const plotHeight = chartHeight - PLOT.top - PLOT.bottom;
@@ -72,7 +82,9 @@ function SleepStudyGraph({ days, title, series }) {
   );
   const maxHours = maxMinutes > 12 * 60 ? 24 : 12;
   const currentYear = new Date().getFullYear();
-  const dateLabelIndexes = isMobileChart ? [0, 3, 6] : DATE_LABEL_INDEXES;
+  const dateLabelIndexes = visibleDays.length <= MOBILE_DAY_COUNT
+    ? [...new Set([0, Math.floor((visibleDays.length - 1) / 2), visibleDays.length - 1])]
+    : DATE_LABEL_INDEXES;
   const yFor = (minutes) =>
     PLOT.top +
     plotHeight -
@@ -101,7 +113,11 @@ function SleepStudyGraph({ days, title, series }) {
   };
 
   return (
-    <section className="sleep-study-graph" aria-label={title}>
+    <section
+      className="sleep-study-graph"
+      aria-label={title}
+      style={activityColor ? { "--study-chart-color": activityColor } : undefined}
+    >
       <div
         ref={chartWrapRef}
         className="sleep-study-chart-wrap"
@@ -135,6 +151,7 @@ function SleepStudyGraph({ days, title, series }) {
             );
           })}
           {series.map((key) => {
+            const seriesLabel = seriesLabels[key] || key;
             const colorClass = `${key}-series`;
             const segments = [];
             let current = [];
@@ -171,9 +188,9 @@ function SleepStudyGraph({ days, title, series }) {
                         className="sleep-study-point-target"
                         cx={x}
                         cy={y}
-                        r="15"
-                        aria-label={`${day.label}: ${formatHours(value)} ${key}`}
-                        data-tip={`${formatDuration(value)} ${key} on ${formatTooltipDate(new Date(`${day.dateKey}T00:00:00`), currentYear)}`}
+                        r={showAllDays && isMobileChart ? 5 : 15}
+                        aria-label={`${day.label}: ${formatHours(value)} ${seriesLabel}`}
+                        data-tip={`${formatDuration(value)} ${seriesLabel} on ${formatTooltipDate(new Date(`${day.dateKey}T00:00:00`), currentYear)}`}
                         data-point={`${key}:${day.dateKey}`}
                         onFocus={showTooltip}
                       />

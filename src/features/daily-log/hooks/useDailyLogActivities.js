@@ -9,16 +9,20 @@ export default function useDailyLogActivities(logRef, setLog) {
     setLog((current) => ({
       ...current,
       custom_tasks: current.custom_tasks.map((task) =>
-        task.id === activity
-          ? {
+        task.id !== activity
+          ? task
+          : {
               ...task,
-              slots: task.slots.map((slot, slotIndex) =>
-                slotIndex === index
-                  ? { ...slot, [field]: value, endDayOffset: 0 }
-                  : slot,
+              slots: Array.from(
+                { length: Math.max(task.slots.length, index + 1) },
+                (_, slotIndex) => {
+                  const slot = task.slots[slotIndex] || { start: "", end: "" };
+                  return slotIndex === index
+                    ? { ...slot, [field]: value, endDayOffset: 0 }
+                    : slot;
+                },
               ),
-            }
-          : task,
+            },
       ),
     }));
   }, [setLog]);
@@ -37,12 +41,34 @@ export default function useDailyLogActivities(logRef, setLog) {
   const removeSlot = useCallback((activity, index) => {
     setLog((current) => ({
       ...current,
-      custom_tasks: current.custom_tasks.map((task) =>
-        task.id === activity
-          ? { ...task, slots: task.slots.filter((_, i) => i !== index) }
-          : task,
-      ),
+      custom_tasks: current.custom_tasks.flatMap((task) => {
+        if (task.id !== activity) return [task];
+        const slots = task.slots.filter((_, slotIndex) => slotIndex !== index);
+        return slots.length ? [{ ...task, slots }] : [];
+      }),
     }));
+  }, [setLog]);
+
+  const discardEmptySlot = useCallback((activity, index) => {
+    setLog((current) => {
+      const task = current.custom_tasks.find((item) => item.id === activity);
+      const slot = task?.slots[index];
+      if (!slot || String(slot.start || "").trim() || String(slot.end || "").trim()) {
+        return current;
+      }
+
+      return {
+        ...current,
+        custom_tasks: current.custom_tasks.map((item) =>
+          item.id === activity
+            ? {
+                ...item,
+                slots: item.slots.filter((_, slotIndex) => slotIndex !== index),
+              }
+            : item,
+        ),
+      };
+    });
   }, [setLog]);
 
   const addCustomTask = useCallback(async (name) => {
@@ -51,7 +77,7 @@ export default function useDailyLogActivities(logRef, setLog) {
     const task = {
       id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
       name: trimmed,
-      slots: [],
+      slots: [{ start: "", end: "" }],
     };
     setLog((current) => ({
       ...current,
@@ -63,7 +89,12 @@ export default function useDailyLogActivities(logRef, setLog) {
   const addSheetActivity = useCallback(async (sheet) => {
     const id = `sheet:${sheet.id}`;
     if (logRef.current.custom_tasks.some((task) => task.id === id)) return true;
-    const task = { id, sheetId: sheet.id, name: sheet.title, slots: [] };
+    const task = {
+      id,
+      sheetId: sheet.id,
+      name: sheet.title,
+      slots: [{ start: "", end: "" }],
+    };
     setLog((current) => ({
       ...current,
       custom_tasks: [...current.custom_tasks, task],
@@ -93,6 +124,7 @@ export default function useDailyLogActivities(logRef, setLog) {
     addCustomTask,
     addSheetActivity,
     addSlot,
+    discardEmptySlot,
     removeCustomTask,
     removeSlot,
     renameCustomTask,

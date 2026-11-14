@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toMinutes } from "../../../shared/utils/time";
+import { getActivityColor } from "../lib/activityColor";
 
 const TICKS = [
   { minute: 0, label: "12am" },
@@ -23,27 +24,36 @@ function timeLabel(value) {
   return String(value).slice(0, 5);
 }
 
-export default function FullLogTimeline({ row, activities }) {
+export default function FullLogTimeline({
+  row,
+  activities,
+  showAxis = true,
+  activityFilter = "All",
+}) {
   const [tooltip, setTooltip] = useState(null);
   const segments = [];
   const sleepSlot = { start: row.sleep_time, end: row.wake_time };
 
-  intervalsFor(sleepSlot, true).forEach(([start, end], index) => {
-    segments.push({
-      key: `sleep-${index}`,
-      kind: "sleep",
-      start,
-      end,
-      label: `Sleep ${timeLabel(row.sleep_time)} to ${timeLabel(row.wake_time)}`,
+  if (activityFilter === "All" || activityFilter === "Sleep") {
+    intervalsFor(sleepSlot, true).forEach(([start, end], index) => {
+      segments.push({
+        key: `sleep-${index}`,
+        kind: "sleep",
+        start,
+        end,
+        label: `Sleep ${timeLabel(row.sleep_time)} to ${timeLabel(row.wake_time)}`,
+      });
     });
-  });
+  }
 
-  activities.forEach((activity, activityIndex) => {
+  activities.forEach((activity) => {
+    if (activityFilter !== "All" && activity.name !== activityFilter) return;
     activity.slots.forEach((slot, slotIndex) => {
       intervalsFor(slot).forEach(([start, end], intervalIndex) => {
         segments.push({
-          key: `${activityIndex}-${slotIndex}-${intervalIndex}`,
+          key: `${activity.id || activity.name}-${slotIndex}-${intervalIndex}`,
           kind: "study",
+          color: getActivityColor(activity.name),
           start,
           end,
           label: `${activity.name} ${timeLabel(slot.start)} to ${timeLabel(slot.end)}`,
@@ -81,17 +91,20 @@ export default function FullLogTimeline({ row, activities }) {
         if (!event.currentTarget.contains(event.relatedTarget)) setTooltip(null);
       }}
     >
-      <div className="full-log-timeline-axis" aria-hidden="true">
-        {TICKS.map(({ minute, label }) => (
-          <span
-            key={label}
-            className={minute === 0 ? "first" : ""}
-            style={{ left: `${(minute / 1440) * 100}%` }}
-          >
-            {label}
-          </span>
-        ))}
-      </div>
+      {showAxis && (
+        <div className="full-log-timeline-axis" aria-hidden="true">
+          {TICKS.map(({ minute, label }) => (
+            <span
+              key={label}
+              className={minute === 0 ? "first" : ""}
+              style={{ left: `${(minute / 1440) * 100}%` }}
+            >
+              {label}
+            </span>
+          ))}
+          <span style={{ left: "100%" }}>12am</span>
+        </div>
+      )}
       <div
         className="full-log-timeline-track"
         role="group"
@@ -108,6 +121,7 @@ export default function FullLogTimeline({ row, activities }) {
             style={{
               left: `${(segment.start / 1440) * 100}%`,
               width: `${((segment.end - segment.start) / 1440) * 100}%`,
+              ...(segment.color ? { "--activity-color": segment.color } : {}),
             }}
           />
         ))}

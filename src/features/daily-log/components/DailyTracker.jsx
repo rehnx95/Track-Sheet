@@ -1,15 +1,17 @@
+import { useState } from "react";
 import DayView from "./DayView";
 import FullLog from "./FullLog";
-import SleepStudyChart from "../../activity/components/SleepStudyChart";
+import TrendsView from "./TrendsView";
 import useDailyLog from "../hooks/useDailyLog";
-import "./DailyTracker.css";
 import "./ActivityEditor.css";
 import "./DailyTrackerStatus.css";
 import "./DailyTrackerStatus.responsive.css";
 import "./FullLog.css";
 import "./FullLog.responsive.css";
+import "./DailyTracker.css";
 
 export default function DailyTracker({ user, sheets, activityLog, askConfirmation }) {
+  const [fullLogToolbarTarget, setFullLogToolbarTarget] = useState(null);
   const daily = useDailyLog(user, activityLog);
 
   return (
@@ -22,40 +24,54 @@ export default function DailyTracker({ user, sheets, activityLog, askConfirmatio
               ? "Full log"
               : "Trends"}
         </h2>
-        <div className="daily-view-switch" aria-label="Daily log view">
-          <button
-            type="button"
-            className={daily.viewMode === "daily" ? "active" : ""}
-            aria-pressed={daily.viewMode === "daily"}
-            onClick={() => void daily.changeViewMode("daily")}
-          >
-            Day
-          </button>
-          <button
-            type="button"
-            className={daily.viewMode === "full" ? "active" : ""}
-            aria-pressed={daily.viewMode === "full"}
-            onClick={() => void daily.changeViewMode("full")}
-          >
-            Full log
-          </button>
-          <button
-            type="button"
-            className={daily.viewMode === "trends" ? "active" : ""}
-            aria-pressed={daily.viewMode === "trends"}
-            onClick={() => void daily.changeViewMode("trends")}
-          >
-            Trends
-          </button>
+        <div className="daily-toolbar-controls">
+          {daily.viewMode === "full" && (
+            <div
+              ref={setFullLogToolbarTarget}
+              className="daily-full-log-toolbar-actions"
+              role="group"
+              aria-label="Full log actions"
+            />
+          )}
+          <div className="daily-view-switch" aria-label="Daily log view">
+            <button
+              type="button"
+              className={daily.viewMode === "daily" ? "active" : ""}
+              aria-pressed={daily.viewMode === "daily"}
+              onClick={() => void daily.changeViewMode("daily")}
+            >
+              Day
+            </button>
+            <button
+              type="button"
+              className={daily.viewMode === "full" ? "active" : ""}
+              aria-pressed={daily.viewMode === "full"}
+              onClick={() => void daily.changeViewMode("full")}
+            >
+              Full log
+            </button>
+            <button
+              type="button"
+              className={daily.viewMode === "trends" ? "active" : ""}
+              aria-pressed={daily.viewMode === "trends"}
+              onClick={() => void daily.changeViewMode("trends")}
+            >
+              Trends
+            </button>
+          </div>
         </div>
       </header>
 
       {daily.viewMode === "daily" ? (
         <DayView daily={daily} sheets={sheets} askConfirmation={askConfirmation} />
       ) : daily.viewMode === "full" ? (
-        <FullLog daily={daily} askConfirmation={askConfirmation} />
+        <FullLog
+          daily={daily}
+          askConfirmation={askConfirmation}
+          toolbarContainer={fullLogToolbarTarget}
+        />
       ) : (
-        <SleepStudyChart userId={user.id} showSummary />
+        <TrendsView daily={daily} />
       )}
       {daily.message && (
         <p className="daily-error-message" role="alert">{daily.message}</p>

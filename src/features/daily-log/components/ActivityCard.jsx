@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Clock3, Ellipsis, Plus, Square, Trash2 } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Plus, Square, Trash2 } from "lucide-react";
 import { formatDuration } from "../../../shared/utils/time";
 import Tooltip from "../../../shared/components/Tooltip";
 import SlotRow from "./SlotRow";
@@ -7,43 +7,37 @@ import SlotRow from "./SlotRow";
 export default function ActivityCard({
   activityId,
   activityName,
+  activityDescription = "",
   slots,
   totalMinutes = 0,
   disabled,
   runningTimer,
   timerNow,
-  onAddSlot,
-  onStartTimer,
+  onSaveNow,
   onStopTimer,
+  onAddSlot,
   onChangeSlot,
   onRemoveSlot,
   onRemoveActivity,
-  onRename,
+  onDiscardEmptySlot,
+  activityColor,
+  allowAddSlot = true,
+  allowRemoveActivity = true,
+  allowRemoveSlot = true,
+  startInputRef,
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [renameValue, setRenameValue] = useState(activityName);
-  const [pendingEmptySlotIndex, setPendingEmptySlotIndex] = useState(null);
-  const menuRef = useRef(null);
+  const cardRef = useRef(null);
   const pendingSlotFocus = useRef(false);
   const previousSlotCount = useRef(slots.length);
-  const visibleSlots = slots
-    .map((slot, index) => ({ slot, index }))
-    .filter(
-      ({ slot, index }) =>
-        Boolean(String(slot.start || "").trim() || String(slot.end || "").trim()) ||
-        index === pendingEmptySlotIndex,
-    );
+  const visibleSlots = slots.map((slot, index) => ({ slot, index }));
   const timerRunningHere = runningTimer?.activityId === activityId;
   const elapsedMinutes = timerRunningHere
     ? Math.max(0, Math.floor((timerNow - Date.parse(runningTimer.startedAt)) / 60_000))
     : 0;
+  const activityDurationMinutes = totalMinutes + elapsedMinutes;
 
   useEffect(() => {
-    setRenameValue(activityName);
-  }, [activityName]);
-
-  useEffect(() => {
-    if (pendingSlotFocus.current && slots.length > previousSlotCount.current) {
+    if (slots.length > previousSlotCount.current && pendingSlotFocus.current) {
       document
         .getElementById(`slot-${activityId}-${slots.length - 1}`)
         ?.querySelector("input")
@@ -54,106 +48,116 @@ export default function ActivityCard({
   }, [activityId, slots.length]);
 
   useEffect(() => {
-    const closeOnOutsideClick = (event) => {
-      if (!menuRef.current?.contains(event.target)) setMenuOpen(false);
+    const discardUnfilledSlots = (event) => {
+      const clickedAction = event.target?.closest?.(".activity-add-slot, .activity-delete");
+      if (clickedAction && cardRef.current?.contains(clickedAction)) return;
+
+      const clickedRow = event.target?.closest?.(".daily-slot-row");
+      const clickedIndex = clickedRow && cardRef.current?.contains(clickedRow)
+        ? Number(clickedRow.dataset.slotIndex)
+        : -1;
+      const emptyIndexes = slots.reduce((indexes, slot, index) => {
+        if (!String(slot.start || "").trim() && !String(slot.end || "").trim()) {
+          indexes.push(index);
+        }
+        return indexes;
+      }, []);
+
+      emptyIndexes.reverse().forEach((index) => {
+        if (index !== clickedIndex) onDiscardEmptySlot?.(index);
+      });
     };
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsideClick);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, []);
+
+    document.addEventListener("pointerdown", discardUnfilledSlots);
+    return () => document.removeEventListener("pointerdown", discardUnfilledSlots);
+  }, [onDiscardEmptySlot, slots]);
+
+  const addSlot = () => {
+    pendingSlotFocus.current = true;
+    onAddSlot();
+  };
 
   return (
-    <section className="activity-card">
+    <section
+      className="activity-card activity-card-activity"
+      ref={cardRef}
+      style={{ "--activity-color": activityColor }}
+    >
       <header className="activity-card-heading">
         <div className="activity-card-identity">
-          <Clock3 size={15} aria-hidden="true" />
+          <span className="activity-row-dot" aria-hidden="true" />
           <strong className="activity-card-name">{activityName}</strong>
-        </div>
-        <span className="activity-total">{formatDuration(totalMinutes + elapsedMinutes)}</span>
-        <div className="activity-menu-wrap" ref={menuRef}>
-          <Tooltip label={`Options for ${activityName}`}>
-            <button
-              type="button"
-              className="activity-menu-trigger"
-              aria-label={`Options for ${activityName}`}
-              aria-expanded={menuOpen}
-              aria-haspopup="menu"
-              disabled={disabled}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              <Ellipsis size={17} aria-hidden="true" />
-            </button>
-          </Tooltip>
-          {menuOpen && (
-            <div className="activity-menu" role="menu">
-              <label className="activity-menu-label">
-                Rename
-                <input
-                  value={renameValue}
-                  disabled={disabled}
-                  onChange={(event) => setRenameValue(event.target.value)}
-                  onBlur={(event) => {
-                    const name = event.currentTarget.value.trim();
-                    if (name && name !== activityName) onRename(name);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                  }}
-                />
-              </label>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={disabled || timerRunningHere}
-                onClick={async () => {
-                  await onRemoveActivity();
-                  setMenuOpen(false);
-                }}
-              >
-                <Trash2 size={14} aria-hidden="true" />
-                Remove activity
-              </button>
+          {(allowAddSlot || allowRemoveActivity) && (
+            <div className="activity-card-inline-controls">
+              {allowAddSlot && (
+                <Tooltip label="Add slot" className="activity-add-slot-tooltip">
+                  <button
+                    type="button"
+                    className="activity-add-slot"
+                    aria-label={`Add slot to ${activityName}`}
+                    onClick={addSlot}
+                    disabled={disabled || timerRunningHere}
+                  >
+                    <Plus size={14} aria-hidden="true" />
+                  </button>
+                </Tooltip>
+              )}
+              {allowRemoveActivity && (
+                <Tooltip label="Remove activity">
+                  <button
+                    type="button"
+                    className="activity-delete"
+                    aria-label={`Remove ${activityName} activity`}
+                    onClick={() => void onRemoveActivity()}
+                    disabled={disabled || timerRunningHere}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
+                </Tooltip>
+              )}
             </div>
           )}
+          {activityDescription && (
+            <span className="activity-card-description">{activityDescription}</span>
+          )}
+          {activityId.startsWith("sheet:") && (
+            <span className="activity-from-sheet">From sheet</span>
+          )}
+          {slots.length > 1 && (
+            <span className="activity-slot-count">{slots.length} slots</span>
+          )}
         </div>
+        <span className="activity-total">
+          {activityDurationMinutes > 0 ? formatDuration(activityDurationMinutes) : "—"}
+        </span>
       </header>
-      <div className="daily-slot-list">
-        {visibleSlots.map(({ slot, index }) => (
-          <SlotRow
-            key={`${activityId}-${index}`}
-            activityId={activityId}
-            activityName={activityName}
-            index={index}
-            slot={slot}
-            onChange={(slotIndex, field, value) => {
-              if (slotIndex === pendingEmptySlotIndex) {
-                setPendingEmptySlotIndex(null);
+      {visibleSlots.length > 0 && (
+        <div className="daily-slot-list">
+          {visibleSlots.map(({ slot, index }) => (
+            <SlotRow
+              key={`${activityId}-${index}`}
+              activityName={activityName}
+              index={index}
+              slot={slot}
+              startInputRef={index === 0 ? startInputRef : undefined}
+              onSaveNow={onSaveNow}
+              slotDescription={
+                [slot.description, slot.title, slot.label].find(
+                  (value) => typeof value === "string" && value.trim(),
+                ) || ""
               }
-              onChangeSlot(slotIndex, field, value);
-            }}
-            onRemove={(slotIndex) => {
-              setPendingEmptySlotIndex((pendingIndex) =>
-                pendingIndex === slotIndex
-                  ? null
-                  : pendingIndex !== null && pendingIndex > slotIndex
-                    ? pendingIndex - 1
-                    : pendingIndex,
-              );
-              onRemoveSlot(slotIndex);
-            }}
-            disabled={disabled}
-          />
-        ))}
-        {!visibleSlots.length && <p className="slot-empty">No time recorded yet.</p>}
-      </div>
-      <div className="activity-card-actions">
-        {timerRunningHere && (
+              onChange={(slotIndex, field, value) =>
+                onChangeSlot(slotIndex, field, value)
+              }
+              onRemove={(slotIndex) => onRemoveSlot(slotIndex)}
+              allowRemove={allowRemoveSlot}
+              disabled={disabled || timerRunningHere}
+            />
+          ))}
+        </div>
+      )}
+      {timerRunningHere && (
+        <div className="activity-card-actions">
           <button
             type="button"
             className="slot-start is-running"
@@ -162,20 +166,8 @@ export default function ActivityCard({
           >
             <Square size={13} aria-hidden="true" /> Stop
           </button>
-        )}
-        <button
-          type="button"
-          className="slot-add"
-          onClick={() => {
-            pendingSlotFocus.current = true;
-            setPendingEmptySlotIndex(slots.length);
-            onAddSlot();
-          }}
-          disabled={disabled}
-        >
-          <Plus size={14} /> Add time
-        </button>
-      </div>
+        </div>
+      )}
     </section>
   );
 }

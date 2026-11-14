@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./TimeInput.css";
 
 function getSegments(value) {
@@ -16,6 +16,20 @@ function commitTime(hour, minute, onChange) {
   } else if (!hour && !minute) {
     onChange("");
   }
+}
+
+function advanceTimeSegment(input) {
+  const range = input.closest(".slot-time-range");
+  if (!range) return;
+
+  const inputs = [...range.querySelectorAll(
+    'input[data-time-navigation][data-time-segment]:not(:disabled)',
+  )];
+  const next = inputs[inputs.indexOf(input) + 1];
+  if (!next) return;
+
+  next.focus({ preventScroll: true });
+  next.select();
 }
 
 export function navigateTimeSegments(event) {
@@ -47,14 +61,23 @@ export default function TimeInput({
   disabled,
   label,
   showPlaceholder = false,
+  inputRef,
+  onSaveNow,
 }) {
   const [segments, setSegments] = useState(() => getSegments(value));
+  const pendingAdvance = useRef(null);
 
   useEffect(() => {
     setSegments(getSegments(value));
   }, [value]);
 
-  const changeSegment = (segment, rawValue) => {
+  useEffect(() => {
+    if (!pendingAdvance.current) return;
+    advanceTimeSegment(pendingAdvance.current);
+    pendingAdvance.current = null;
+  }, [segments]);
+
+  const changeSegment = (segment, rawValue, input) => {
     const digits = rawValue.replace(/\D/g, "").slice(0, 2);
     const next = { ...segments, [segment]: digits };
     setSegments(next);
@@ -65,6 +88,10 @@ export default function TimeInput({
     }
 
     commitTime(next.hour, next.minute, onChange);
+    const maximum = segment === "hour" ? 23 : 59;
+    if (digits.length === 2 && Number(digits) <= maximum) {
+      pendingAdvance.current = input;
+    }
   };
 
   const blurTime = () => {
@@ -77,7 +104,7 @@ export default function TimeInput({
       minute > 59
     ) {
       setSegments(getSegments(value));
-      return;
+      return false;
     }
 
     const next = {
@@ -86,6 +113,7 @@ export default function TimeInput({
     };
     setSegments(next);
     commitTime(next.hour, next.minute, onChange);
+    return true;
   };
 
   const adjustSegment = (segment, amount) => {
@@ -100,6 +128,12 @@ export default function TimeInput({
   };
 
   const handleKeyDown = (segment) => (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (blurTime()) void onSaveNow?.();
+      return;
+    }
+
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
       navigateTimeSegments(event);
       return;
@@ -126,10 +160,11 @@ export default function TimeInput({
         value={segments.hour}
         placeholder={showPlaceholder ? "--" : undefined}
         disabled={disabled}
+        ref={inputRef}
         data-time-navigation
         data-time-segment="hour"
         aria-label={`${label} hour`}
-        onChange={(event) => changeSegment("hour", event.target.value)}
+        onChange={(event) => changeSegment("hour", event.target.value, event.currentTarget)}
         onFocus={(event) => event.currentTarget.select()}
         onKeyDown={handleKeyDown("hour")}
         onBlur={handleBlur}
@@ -146,7 +181,7 @@ export default function TimeInput({
         data-time-navigation
         data-time-segment="minute"
         aria-label={`${label} minute`}
-        onChange={(event) => changeSegment("minute", event.target.value)}
+        onChange={(event) => changeSegment("minute", event.target.value, event.currentTarget)}
         onFocus={(event) => event.currentTarget.select()}
         onKeyDown={handleKeyDown("minute")}
         onBlur={handleBlur}

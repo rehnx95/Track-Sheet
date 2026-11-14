@@ -172,7 +172,8 @@ html {
   padding: 0.35rem;
   border: 1px solid var(--border-strong);
   border-radius: 0.75rem;
-  background: var(--surface);
+  background: var(--popup-background);
+  color: var(--popup-foreground);
   box-shadow: 0 12px 32px var(--shadow);
 }
 
@@ -206,8 +207,8 @@ html {
 
 .popover-item:hover,
 .popover-trash:hover {
-  background: var(--surface-hover);
-  color: var(--text);
+  background: var(--popup-hover-background);
+  color: var(--popup-foreground);
 }
 
 .popover-item:disabled {
